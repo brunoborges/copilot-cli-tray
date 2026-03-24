@@ -449,6 +449,9 @@ public class PrunePanel extends VBox {
     private final Set<String> collapsedDirs = new HashSet<>();
 
     private void rebuildTreeView() {
+        // Detach old root first to prevent stale listeners from firing
+        treeTable.setRoot(null);
+
         var root = new TreeItem<Object>("Root");
         root.setExpanded(true);
 
@@ -461,17 +464,20 @@ public class PrunePanel extends VBox {
         var sortedDirs = new ArrayList<>(byDir.keySet());
         Collections.sort(sortedDirs);
 
+        // Remove collapsed entries for dirs that no longer exist
+        collapsedDirs.retainAll(byDir.keySet());
+
         for (var dir : sortedDirs) {
             var dirItem = new TreeItem<Object>((Object) dir);
-            // Preserve user's collapse state; default to expanded
             dirItem.setExpanded(!collapsedDirs.contains(dir));
+            for (var c : byDir.get(dir)) {
+                dirItem.getChildren().add(new TreeItem<>(c));
+            }
+            // Add listener AFTER children are added and expanded state is set
             dirItem.expandedProperty().addListener((obs, old, expanded) -> {
                 if (expanded) collapsedDirs.remove(dir);
                 else collapsedDirs.add(dir);
             });
-            for (var c : byDir.get(dir)) {
-                dirItem.getChildren().add(new TreeItem<>(c));
-            }
             root.getChildren().add(dirItem);
         }
         treeTable.setRoot(root);
