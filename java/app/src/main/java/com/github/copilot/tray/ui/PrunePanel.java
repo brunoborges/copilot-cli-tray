@@ -267,7 +267,7 @@ public class PrunePanel extends VBox {
             return new SimpleStringProperty(null);
         });
         selectCol.setCellFactory(col -> new TreeCheckBoxCell());
-        selectCol.setPrefWidth(35);
+        selectCol.setPrefWidth(55);
         selectCol.setSortable(false);
 
         // Name / Directory (tree disclosure column)
