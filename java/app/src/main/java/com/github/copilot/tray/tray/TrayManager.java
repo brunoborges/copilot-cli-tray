@@ -26,14 +26,17 @@ public class TrayManager {
     private final SdkBridge sdkBridge;
     private final TerminalLauncher terminalLauncher;
     private final Runnable onOpenSettings;
+    private final Runnable onShowSessions;
     private TrayIcon trayIcon;
 
     public TrayManager(SessionManager sessionManager, SdkBridge sdkBridge,
-                       TerminalLauncher terminalLauncher, Runnable onOpenSettings) {
+                       TerminalLauncher terminalLauncher, Runnable onOpenSettings,
+                       Runnable onShowSessions) {
         this.sessionManager = sessionManager;
         this.sdkBridge = sdkBridge;
         this.terminalLauncher = terminalLauncher;
         this.onOpenSettings = onOpenSettings;
+        this.onShowSessions = onShowSessions;
     }
 
     /**
@@ -90,15 +93,24 @@ public class TrayManager {
     private PopupMenu buildMenu(Collection<SessionSnapshot> sessions) {
         var menu = new PopupMenu("Copilot CLI Tray");
 
-        // Split sessions by local vs remote, then by active vs archived
-        var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
-        var remoteSessions = sessions.stream().filter(SessionSnapshot::remote).toList();
+        // If more than 10 sessions total, show a summary + link to settings window
+        if (sessions.size() > 10) {
+            long localCount = sessions.stream().filter(s -> !s.remote()).count();
+            long remoteCount = sessions.stream().filter(SessionSnapshot::remote).count();
+            long activeCount = sessions.stream()
+                    .filter(s -> s.status() != SessionStatus.ARCHIVED).count();
 
-        // Local Sessions
-        menu.add(buildSessionGroup("Local Sessions", localSessions));
+            menu.add(disabledItem(sessions.size() + " sessions (" + activeCount
+                    + " active, " + localCount + " local, " + remoteCount + " remote)"));
+            menu.add(actionItem("View All Sessions...", e -> onShowSessions.run()));
+        } else {
+            // Split sessions by local vs remote, then by active vs archived
+            var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
+            var remoteSessions = sessions.stream().filter(SessionSnapshot::remote).toList();
 
-        // Remote Sessions
-        menu.add(buildSessionGroup("Remote Sessions", remoteSessions));
+            menu.add(buildSessionGroup("Local Sessions", localSessions));
+            menu.add(buildSessionGroup("Remote Sessions", remoteSessions));
+        }
 
         menu.addSeparator();
 

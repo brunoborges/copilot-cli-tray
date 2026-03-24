@@ -1,13 +1,10 @@
 package com.github.copilot.tray.ui;
 
-import com.github.copilot.tray.config.AppConfig;
 import com.github.copilot.tray.config.ConfigStore;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.session.SessionStatus;
-import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -22,13 +19,22 @@ import java.util.Collection;
  */
 public class SettingsWindow {
 
+    private static final int TRAY_SESSION_OVERFLOW = 10;
+
     private final SessionManager sessionManager;
     private final ConfigStore configStore;
+    private final java.util.function.Consumer<String> deleteHandler;
+    private final java.util.function.Consumer<String> resumeHandler;
     private Stage stage;
+    private TabPane tabPane;
 
     // Session tab controls
-    private ListView<String> sessionListView;
+    private TreeView<String> sessionTree;
     private Label detailLabel;
+    private HBox actionBar;
+
+    // Track currently selected session for actions
+    private SessionSnapshot selectedSession;
 
     // Preferences tab controls
     private TextField cliPathField;
@@ -37,9 +43,13 @@ public class SettingsWindow {
     private CheckBox notificationsCheckBox;
     private CheckBox autoStartCheckBox;
 
-    public SettingsWindow(SessionManager sessionManager, ConfigStore configStore) {
+    public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
+                          java.util.function.Consumer<String> deleteHandler,
+                          java.util.function.Consumer<String> resumeHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
+        this.deleteHandler = deleteHandler;
+        this.resumeHandler = resumeHandler;
     }
 
     /**
@@ -51,10 +61,35 @@ public class SettingsWindow {
             if (stage == null) {
                 stage = createStage();
             }
-            refreshSessionList(sessionManager.getSessions());
+            refreshSessionTree(sessionManager.getSessions());
             stage.show();
             stage.toFront();
         });
+    }
+
+    /**
+     * Show the settings window with the Sessions tab selected.
+     */
+    public void showSessionsTab() {
+        Platform.runLater(() -> {
+            if (stage == null) {
+                stage = createStage();
+            }
+            refreshSessionTree(sessionManager.getSessions());
+            if (tabPane != null) {
+                tabPane.getSelectionModel().select(0); // Sessions is first tab
+            }
+            stage.show();
+            stage.toFront();
+        });
+    }
+
+    /**
+     * Returns the overflow threshold. When the total session count exceeds this,
+     * the tray menu should redirect to the settings window instead.
+     */
+    public static int getTraySessionOverflow() {
+        return TRAY_SESSION_OVERFLOW;
     }
 
     /**
@@ -62,12 +97,12 @@ public class SettingsWindow {
      */
     public void onSessionChange(Collection<SessionSnapshot> sessions) {
         if (stage != null && stage.isShowing()) {
-            Platform.runLater(() -> refreshSessionList(sessions));
+            Platform.runLater(() -> refreshSessionTree(sessions));
         }
     }
 
     private Stage createStage() {
-        var tabPane = new TabPane();
+        tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         tabPane.getTabs().addAll(
@@ -77,82 +112,127 @@ public class SettingsWindow {
                 createAboutTab()
         );
 
-        var scene = new Scene(tabPane, 700, 500);
+        var scene = new Scene(tabPane, 800, 550);
         var s = new Stage();
         s.setTitle("Copilot CLI Tray — Settings");
         s.setScene(scene);
         s.setOnCloseRequest(e -> {
             e.consume();
-            s.hide(); // Hide, don't close (Platform.setImplicitExit(false))
+            s.hide();
         });
         return s;
     }
 
-    // --- Sessions Tab ---
+    // --- Sessions Tab (TreeView with grouped local/remote + active/archived) ---
 
     private Tab createSessionsTab() {
-        sessionListView = new ListView<>();
-        sessionListView.setPrefWidth(250);
-        sessionListView.getSelectionModel().selectedItemProperty()
-                .addListener((obs, old, selected) -> showSessionDetail(selected));
+        sessionTree = new TreeView<>();
+        sessionTree.setShowRoot(false);
+        sessionTree.setPrefWidth(300);
+        sessionTree.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, selected) -> onTreeSelection(selected));
 
         detailLabel = new Label("Select a session to view details.");
         detailLabel.setWrapText(true);
         detailLabel.setPadding(new Insets(10));
 
-        var scrollDetail = new ScrollPane(detailLabel);
-        scrollDetail.setFitToWidth(true);
-        scrollDetail.setFitToHeight(true);
+        // Action buttons
+        var resumeBtn = new Button("Resume in Terminal");
+        resumeBtn.setOnAction(e -> {
+            if (selectedSession != null) resumeHandler.accept(selectedSession.id());
+        });
 
-        var split = new SplitPane(sessionListView, scrollDetail);
-        split.setDividerPositions(0.35);
+        var cancelBtn = new Button("Cancel");
+        cancelBtn.setOnAction(e -> {
+            if (selectedSession != null) deleteHandler.accept(selectedSession.id());
+        });
 
-        var tab = new Tab("Sessions", split);
-        return tab;
+        var deleteBtn = new Button("Delete");
+        deleteBtn.setStyle("-fx-text-fill: red;");
+        deleteBtn.setOnAction(e -> {
+            if (selectedSession != null) {
+                var confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Delete session '" + selectedSession.name() + "'?",
+                        ButtonType.YES, ButtonType.NO);
+                confirm.setHeaderText(null);
+                confirm.showAndWait().ifPresent(bt -> {
+                    if (bt == ButtonType.YES) {
+                        deleteHandler.accept(selectedSession.id());
+                    }
+                });
+            }
+        });
+
+        actionBar = new HBox(8, resumeBtn, cancelBtn, deleteBtn);
+        actionBar.setPadding(new Insets(8));
+        actionBar.setDisable(true);
+
+        var detailScroll = new ScrollPane(detailLabel);
+        detailScroll.setFitToWidth(true);
+        detailScroll.setFitToHeight(true);
+
+        var rightPane = new VBox(detailScroll, actionBar);
+        VBox.setVgrow(detailScroll, Priority.ALWAYS);
+
+        var split = new SplitPane(sessionTree, rightPane);
+        split.setDividerPositions(0.38);
+
+        return new Tab("Sessions", split);
     }
 
-    private void refreshSessionList(Collection<SessionSnapshot> sessions) {
-        if (sessionListView == null) return;
-        var items = sessions.stream()
-                .map(s -> s.name() + " [" + s.status() + "]")
-                .sorted()
-                .toList();
-        sessionListView.setItems(FXCollections.observableArrayList(items));
-    }
-
-    private void showSessionDetail(String selectedLabel) {
-        if (selectedLabel == null) {
+    private void onTreeSelection(TreeItem<String> item) {
+        if (item == null || item.getValue() == null) {
+            selectedSession = null;
             detailLabel.setText("Select a session to view details.");
+            actionBar.setDisable(true);
             return;
         }
-        // Find matching session
-        var session = sessionManager.getSessions().stream()
-                .filter(s -> selectedLabel.startsWith(s.name()))
+
+        // Only leaf nodes (no children) represent sessions
+        if (!item.isLeaf()) {
+            selectedSession = null;
+            detailLabel.setText("Select a session to view details.");
+            actionBar.setDisable(true);
+            return;
+        }
+
+        // The user data is set to session ID in refreshSessionTree
+        var sessionId = (String) item.getValue();
+        // Match by trying to find a session whose tree label matches
+        selectedSession = sessionManager.getSessions().stream()
+                .filter(s -> buildTreeLabel(s).equals(sessionId))
                 .findFirst()
                 .orElse(null);
 
-        if (session == null) {
+        if (selectedSession == null) {
             detailLabel.setText("Session not found.");
+            actionBar.setDisable(true);
             return;
         }
 
+        actionBar.setDisable(false);
+        showSessionDetail(selectedSession);
+    }
+
+    private void showSessionDetail(SessionSnapshot session) {
         var sb = new StringBuilder();
         sb.append("ID: ").append(session.id()).append("\n");
         sb.append("Name: ").append(session.name()).append("\n");
         sb.append("Model: ").append(session.model()).append("\n");
         sb.append("Status: ").append(session.status()).append("\n");
+        sb.append("Location: ").append(session.remote() ? "Remote" : "Local").append("\n");
         sb.append("Working Directory: ").append(session.workingDirectory()).append("\n");
         sb.append("Created: ").append(session.createdAt()).append("\n");
         sb.append("Last Activity: ").append(session.lastActivityAt()).append("\n\n");
 
-        sb.append("--- Usage ---\n");
+        sb.append("— Usage —\n");
         sb.append("Tokens: ").append(session.usage().currentTokens())
                 .append(" / ").append(session.usage().tokenLimit())
                 .append(" (").append((int) session.usage().tokenUsagePercent()).append("%)\n");
         sb.append("Messages: ").append(session.usage().messagesCount()).append("\n\n");
 
         if (!session.subagents().isEmpty()) {
-            sb.append("--- Subagents ---\n");
+            sb.append("— Subagents —\n");
             for (var sub : session.subagents()) {
                 sb.append("  ").append(sub.id())
                         .append(" [").append(sub.status()).append("] ")
@@ -165,6 +245,58 @@ public class SettingsWindow {
         }
 
         detailLabel.setText(sb.toString());
+    }
+
+    private void refreshSessionTree(Collection<SessionSnapshot> sessions) {
+        if (sessionTree == null) return;
+
+        var root = new TreeItem<String>("Sessions");
+
+        var local = sessions.stream().filter(s -> !s.remote()).toList();
+        var remote = sessions.stream().filter(SessionSnapshot::remote).toList();
+
+        root.getChildren().add(buildGroupNode("Local Sessions", local));
+        root.getChildren().add(buildGroupNode("Remote Sessions", remote));
+
+        root.setExpanded(true);
+        sessionTree.setRoot(root);
+    }
+
+    private TreeItem<String> buildGroupNode(String label, java.util.List<SessionSnapshot> sessions) {
+        var active = sessions.stream()
+                .filter(s -> s.status() != SessionStatus.ARCHIVED).toList();
+        var archived = sessions.stream()
+                .filter(s -> s.status() == SessionStatus.ARCHIVED).toList();
+
+        var group = new TreeItem<>(label + " (" + sessions.size() + ")");
+        group.setExpanded(true);
+
+        var activeNode = new TreeItem<>("Active (" + active.size() + ")");
+        activeNode.setExpanded(true);
+        for (var s : active) {
+            activeNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
+        }
+        group.getChildren().add(activeNode);
+
+        var archivedNode = new TreeItem<>("Archived (" + archived.size() + ")");
+        archivedNode.setExpanded(false); // collapsed by default
+        for (var s : archived) {
+            archivedNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
+        }
+        group.getChildren().add(archivedNode);
+
+        return group;
+    }
+
+    private static String buildTreeLabel(SessionSnapshot s) {
+        var label = s.name();
+        if (!"unknown".equals(s.model())) {
+            label += " [" + s.model() + "]";
+        }
+        if (s.usage().tokenUsagePercent() > 0) {
+            label += " — " + (int) s.usage().tokenUsagePercent() + "%";
+        }
+        return label;
     }
 
     // --- Usage Tab ---
