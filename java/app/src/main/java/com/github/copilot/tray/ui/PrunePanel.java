@@ -256,13 +256,15 @@ public class PrunePanel extends VBox {
     private void buildTreeTable() {
         treeTable.setShowRoot(false);
 
-        // Checkbox column
-        var selectCol = new TreeTableColumn<Object, Boolean>("✓");
+        // Checkbox column — typed as String (sessionId) to guarantee updateItem fires on reuse
+        var selectCol = new TreeTableColumn<Object, String>("✓");
         selectCol.setCellValueFactory(cd -> {
             if (cd.getValue().getValue() instanceof PruneCandidate pc) {
-                return getSelectionProperty(pc.sessionId());
+                return new SimpleStringProperty(pc.sessionId());
+            } else if (cd.getValue().getValue() instanceof String dir) {
+                return new SimpleStringProperty("group:" + dir);
             }
-            return new SimpleBooleanProperty(false);
+            return new SimpleStringProperty(null);
         });
         selectCol.setCellFactory(col -> new TreeCheckBoxCell());
         selectCol.setPrefWidth(35);
@@ -402,10 +404,16 @@ public class PrunePanel extends VBox {
         });
         assistMsgCol.setPrefWidth(40);
 
-        // Actions
-        var actionsCol = new TreeTableColumn<Object, Void>("Actions");
+        // Actions — typed as String (sessionId) so updateItem fires reliably on cell reuse
+        var actionsCol = new TreeTableColumn<Object, String>("Actions");
         actionsCol.setPrefWidth(140);
         actionsCol.setSortable(false);
+        actionsCol.setCellValueFactory(cd -> {
+            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
+                return new SimpleStringProperty(pc.sessionId());
+            }
+            return new SimpleStringProperty(null);
+        });
         actionsCol.setCellFactory(col -> new TreeTableCell<>() {
             private final Button resumeBtn = new Button("Resume");
             private final Button deleteBtn = new Button("Delete");
@@ -417,19 +425,17 @@ public class PrunePanel extends VBox {
             }
 
             @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || getIndex() < 0) {
+            protected void updateItem(String sessionId, boolean empty) {
+                super.updateItem(sessionId, empty);
+                if (empty || sessionId == null) {
                     setGraphic(null);
-                    return;
-                }
-                var ti = treeTable.getTreeItem(getIndex());
-                if (ti != null && ti.getValue() instanceof PruneCandidate pc) {
-                    resumeBtn.setOnAction(e -> resumeHandler.accept(pc.sessionId()));
-                    deleteBtn.setOnAction(e -> deleteSingleSession(pc));
-                    setGraphic(box);
                 } else {
-                    setGraphic(null);
+                    resumeBtn.setOnAction(e -> resumeHandler.accept(sessionId));
+                    deleteBtn.setOnAction(e -> candidates.stream()
+                            .filter(c -> c.sessionId().equals(sessionId))
+                            .findFirst()
+                            .ifPresent(pc -> deleteSingleSession(pc)));
+                    setGraphic(box);
                 }
             }
         });
@@ -771,7 +777,7 @@ public class PrunePanel extends VBox {
     }
 
     /** CheckBox cell for the tree table — handles both directory groups and session leaves. */
-    private class TreeCheckBoxCell extends TreeTableCell<Object, Boolean> {
+    private class TreeCheckBoxCell extends TreeTableCell<Object, String> {
         private final CheckBox checkBox = new CheckBox();
         private String boundId;
         private javafx.beans.value.ChangeListener<Boolean> externalListener;
@@ -780,44 +786,55 @@ public class PrunePanel extends VBox {
         TreeCheckBoxCell() {
             setAlignment(Pos.CENTER);
             checkBox.selectedProperty().addListener((obs, old, val) -> {
-                if (updating || getIndex() < 0) return;
-                var ti = treeTable.getTreeItem(getIndex());
-                if (ti == null) return;
-
-                if (ti.getValue() instanceof PruneCandidate && boundId != null) {
-                    getSelectionProperty(boundId).set(val);
-                } else if (ti.getValue() instanceof String) {
-                    for (var child : ti.getChildren()) {
-                        if (child.getValue() instanceof PruneCandidate pc) {
-                            getSelectionProperty(pc.sessionId()).set(val);
+                if (updating || boundId == null) return;
+                if (boundId.startsWith("group:")) {
+                    // Group toggle: select/deselect all children
+                    int idx = getIndex();
+                    if (idx >= 0) {
+                        var ti = treeTable.getTreeItem(idx);
+                        if (ti != null) {
+                            for (var child : ti.getChildren()) {
+                                if (child.getValue() instanceof PruneCandidate pc) {
+                                    getSelectionProperty(pc.sessionId()).set(val);
+                                }
+                            }
                         }
                     }
+                } else {
+                    getSelectionProperty(boundId).set(val);
                 }
             });
         }
 
         @Override
-        protected void updateItem(Boolean item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty || getIndex() < 0) {
+        protected void updateItem(String idKey, boolean empty) {
+            super.updateItem(idKey, empty);
+            if (empty || idKey == null) {
                 setGraphic(null);
                 unbind();
                 return;
             }
 
-            var ti = treeTable.getTreeItem(getIndex());
-            if (ti == null) {
-                setGraphic(null);
+            if (!idKey.equals(boundId)) {
                 unbind();
-                return;
-            }
+                boundId = idKey;
 
-            if (ti.getValue() instanceof PruneCandidate pc) {
-                var sessionId = pc.sessionId();
-                if (!sessionId.equals(boundId)) {
-                    unbind();
-                    boundId = sessionId;
-                    var prop = getSelectionProperty(sessionId);
+                if (idKey.startsWith("group:")) {
+                    // Group row: check if all children are selected
+                    int idx = getIndex();
+                    var ti = idx >= 0 ? treeTable.getTreeItem(idx) : null;
+                    updating = true;
+                    boolean allSelected = ti != null && !ti.getChildren().isEmpty()
+                            && ti.getChildren().stream()
+                            .map(TreeItem::getValue)
+                            .filter(PruneCandidate.class::isInstance)
+                            .map(PruneCandidate.class::cast)
+                            .allMatch(pc -> getSelectionProperty(pc.sessionId()).get());
+                    checkBox.setSelected(allSelected);
+                    updating = false;
+                } else {
+                    // Session leaf: bind to selection property
+                    var prop = getSelectionProperty(idKey);
                     updating = true;
                     checkBox.setSelected(prop.get());
                     updating = false;
@@ -828,27 +845,8 @@ public class PrunePanel extends VBox {
                     };
                     prop.addListener(externalListener);
                 }
-                setGraphic(checkBox);
-            } else if (ti.getValue() instanceof String dir) {
-                var groupKey = "group:" + dir;
-                if (!groupKey.equals(boundId)) {
-                    unbind();
-                    boundId = groupKey;
-                    updating = true;
-                    boolean allSelected = !ti.getChildren().isEmpty()
-                            && ti.getChildren().stream()
-                            .map(TreeItem::getValue)
-                            .filter(PruneCandidate.class::isInstance)
-                            .map(PruneCandidate.class::cast)
-                            .allMatch(pc2 -> getSelectionProperty(pc2.sessionId()).get());
-                    checkBox.setSelected(allSelected);
-                    updating = false;
-                }
-                setGraphic(checkBox);
-            } else {
-                setGraphic(null);
-                unbind();
             }
+            setGraphic(checkBox);
         }
 
         private void unbind() {
