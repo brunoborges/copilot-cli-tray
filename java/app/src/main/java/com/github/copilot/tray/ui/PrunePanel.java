@@ -293,13 +293,16 @@ public class PrunePanel extends VBox {
                     setStyle("");
                 } else {
                     setText(item);
-                    var treeItem = getTreeTableRow().getTreeItem();
-                    if (treeItem != null && treeItem.getValue() instanceof PruneCandidate pc) {
+                    var ti = getIndex() >= 0 ? treeTable.getTreeItem(getIndex()) : null;
+                    if (ti != null && ti.getValue() instanceof PruneCandidate pc) {
                         setTooltip(new Tooltip(pc.sessionId()));
                         setStyle("-fx-font-family: monospace; -fx-font-size: 11px;");
-                    } else if (treeItem != null && treeItem.getValue() instanceof String dir) {
+                    } else if (ti != null && ti.getValue() instanceof String dir) {
                         setTooltip(new Tooltip(dir));
                         setStyle("-fx-font-weight: bold;");
+                    } else {
+                        setTooltip(null);
+                        setStyle("");
                     }
                 }
             }
@@ -416,21 +419,18 @@ public class PrunePanel extends VBox {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || getIndex() < 0) {
                     setGraphic(null);
                     return;
                 }
-                // Defer to next pulse so getTreeTableRow().getTreeItem() is stable
-                Platform.runLater(() -> {
-                    var treeItem = getTreeTableRow() != null ? getTreeTableRow().getTreeItem() : null;
-                    if (treeItem != null && treeItem.getValue() instanceof PruneCandidate pc) {
-                        resumeBtn.setOnAction(e -> resumeHandler.accept(pc.sessionId()));
-                        deleteBtn.setOnAction(e -> deleteSingleSession(pc));
-                        setGraphic(box);
-                    } else {
-                        setGraphic(null);
-                    }
-                });
+                var ti = treeTable.getTreeItem(getIndex());
+                if (ti != null && ti.getValue() instanceof PruneCandidate pc) {
+                    resumeBtn.setOnAction(e -> resumeHandler.accept(pc.sessionId()));
+                    deleteBtn.setOnAction(e -> deleteSingleSession(pc));
+                    setGraphic(box);
+                } else {
+                    setGraphic(null);
+                }
             }
         });
 
@@ -780,34 +780,39 @@ public class PrunePanel extends VBox {
         TreeCheckBoxCell() {
             setAlignment(Pos.CENTER);
             checkBox.selectedProperty().addListener((obs, old, val) -> {
-                if (updating) return;
-                var treeItem = getTreeTableRow() != null ? getTreeTableRow().getTreeItem() : null;
-                if (treeItem == null) return;
+                if (updating || getIndex() < 0) return;
+                var ti = treeTable.getTreeItem(getIndex());
+                if (ti == null) return;
 
-                if (treeItem.getValue() instanceof PruneCandidate && boundId != null) {
+                if (ti.getValue() instanceof PruneCandidate && boundId != null) {
                     getSelectionProperty(boundId).set(val);
-                } else if (treeItem.getValue() instanceof String) {
-                    for (var child : treeItem.getChildren()) {
+                } else if (ti.getValue() instanceof String) {
+                    for (var child : ti.getChildren()) {
                         if (child.getValue() instanceof PruneCandidate pc) {
                             getSelectionProperty(pc.sessionId()).set(val);
                         }
                     }
                 }
             });
-
-            // Re-bind when the row's tree item changes (cell recycling)
-            indexProperty().addListener((obs, old, idx) -> Platform.runLater(this::rebind));
         }
 
-        private void rebind() {
-            var treeItem = getTreeTableRow() != null ? getTreeTableRow().getTreeItem() : null;
-            if (isEmpty() || treeItem == null) {
+        @Override
+        protected void updateItem(Boolean item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || getIndex() < 0) {
                 setGraphic(null);
                 unbind();
                 return;
             }
 
-            if (treeItem.getValue() instanceof PruneCandidate pc) {
+            var ti = treeTable.getTreeItem(getIndex());
+            if (ti == null) {
+                setGraphic(null);
+                unbind();
+                return;
+            }
+
+            if (ti.getValue() instanceof PruneCandidate pc) {
                 var sessionId = pc.sessionId();
                 if (!sessionId.equals(boundId)) {
                     unbind();
@@ -824,14 +829,14 @@ public class PrunePanel extends VBox {
                     prop.addListener(externalListener);
                 }
                 setGraphic(checkBox);
-            } else if (treeItem.getValue() instanceof String dir) {
+            } else if (ti.getValue() instanceof String dir) {
                 var groupKey = "group:" + dir;
                 if (!groupKey.equals(boundId)) {
                     unbind();
                     boundId = groupKey;
                     updating = true;
-                    boolean allSelected = !treeItem.getChildren().isEmpty()
-                            && treeItem.getChildren().stream()
+                    boolean allSelected = !ti.getChildren().isEmpty()
+                            && ti.getChildren().stream()
                             .map(TreeItem::getValue)
                             .filter(PruneCandidate.class::isInstance)
                             .map(PruneCandidate.class::cast)
@@ -844,12 +849,6 @@ public class PrunePanel extends VBox {
                 setGraphic(null);
                 unbind();
             }
-        }
-
-        @Override
-        protected void updateItem(Boolean item, boolean empty) {
-            super.updateItem(item, empty);
-            rebind();
         }
 
         private void unbind() {
