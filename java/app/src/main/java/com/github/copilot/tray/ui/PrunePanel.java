@@ -364,8 +364,17 @@ public class PrunePanel extends VBox {
         // Usr
         var userMsgCol = new TreeTableColumn<Object, String>("Usr");
         userMsgCol.setCellValueFactory(cd -> {
-            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
+            var val = cd.getValue().getValue();
+            if (val instanceof PruneCandidate pc) {
                 return new SimpleStringProperty(String.valueOf(pc.userMessageCount()));
+            } else if (val instanceof String) {
+                int total = cd.getValue().getChildren().stream()
+                        .map(TreeItem::getValue)
+                        .filter(PruneCandidate.class::isInstance)
+                        .map(PruneCandidate.class::cast)
+                        .mapToInt(PruneCandidate::userMessageCount)
+                        .sum();
+                return new SimpleStringProperty(String.valueOf(total));
             }
             return new SimpleStringProperty("");
         });
@@ -374,8 +383,17 @@ public class PrunePanel extends VBox {
         // Ast
         var assistMsgCol = new TreeTableColumn<Object, String>("Ast");
         assistMsgCol.setCellValueFactory(cd -> {
-            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
+            var val = cd.getValue().getValue();
+            if (val instanceof PruneCandidate pc) {
                 return new SimpleStringProperty(String.valueOf(pc.assistantMessageCount()));
+            } else if (val instanceof String) {
+                int total = cd.getValue().getChildren().stream()
+                        .map(TreeItem::getValue)
+                        .filter(PruneCandidate.class::isInstance)
+                        .map(PruneCandidate.class::cast)
+                        .mapToInt(PruneCandidate::assistantMessageCount)
+                        .sum();
+                return new SimpleStringProperty(String.valueOf(total));
             }
             return new SimpleStringProperty("");
         });
