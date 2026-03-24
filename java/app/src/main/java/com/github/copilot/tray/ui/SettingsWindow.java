@@ -111,7 +111,7 @@ public class SettingsWindow {
                 createAboutTab()
         );
 
-        var scene = new Scene(tabPane, 800, 550);
+        var scene = new Scene(tabPane, 1000, 650);
         var s = new Stage();
         s.setTitle("Copilot CLI Tray — Settings");
         s.setScene(scene);
@@ -303,13 +303,7 @@ public class SettingsWindow {
     private Tab createUsageTab() {
         usageDashboard = new UsageDashboard(sessionManager);
         usageDashboard.refresh(sessionManager.getSessions());
-
-        var scrollPane = new ScrollPane(usageDashboard);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setFitToHeight(true);
-        scrollPane.setStyle("-fx-background: #1a1a2e;");
-
-        return new Tab("Usage", scrollPane);
+        return new Tab("Usage", usageDashboard);
     }
 
     // --- Prune Tab ---

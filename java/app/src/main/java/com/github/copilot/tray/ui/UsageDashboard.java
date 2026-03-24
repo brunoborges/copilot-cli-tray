@@ -3,44 +3,40 @@ package com.github.copilot.tray.ui;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.session.SessionStatus;
-import com.github.copilot.tray.session.UsageSnapshot;
 import eu.hansolo.tilesfx.Tile;
 import eu.hansolo.tilesfx.TileBuilder;
 import eu.hansolo.tilesfx.chart.ChartData;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Real-time usage dashboard built with Hansolo TilesFX.
- * Mirrors the Copilot CLI {@code /context} output:
- * System/Tools, Messages, Free Space, Buffer breakdown
- * with a donut chart, gauge, and summary tiles.
+ * Top: session table. Bottom: TilesFX detail for selected session.
  */
 public class UsageDashboard extends VBox {
 
-    private static final double TILE_W = 200;
-    private static final double TILE_H = 200;
-    private static final double SMALL_H = 140;
+    private static final double TILE_W = 180;
+    private static final double TILE_H = 180;
+    private static final double SMALL_H = 130;
 
-    // Context breakdown colors (matching CLI visual style)
-    private static final Color COLOR_SYSTEM  = Color.web("#7b8cde"); // light blue/purple
-    private static final Color COLOR_MSGS    = Color.web("#c0c0c0"); // silver
-    private static final Color COLOR_FREE    = Color.web("#4a4a6a"); // dark muted
-    private static final Color COLOR_BUFFER  = Color.web("#8a8aaa"); // medium gray-blue
+    private static final Color COLOR_SYSTEM = Color.web("#7b8cde");
+    private static final Color COLOR_MSGS   = Color.web("#c0c0c0");
+    private static final Color COLOR_FREE   = Color.web("#4a4a6a");
+    private static final Color COLOR_BUFFER = Color.web("#8a8aaa");
 
     private final SessionManager sessionManager;
 
-    // Session selector
-    private final ComboBox<String> sessionPicker = new ComboBox<>();
+    // Session table
+    private final TableView<SessionSnapshot> sessionTable = new TableView<>();
 
     // Donut chart data
     private final ChartData systemToolsData;
@@ -48,42 +44,38 @@ public class UsageDashboard extends VBox {
     private final ChartData freeSpaceData;
     private final ChartData bufferData;
 
-    // Per-session tiles
+    // Detail tiles
     private final Tile donutTile;
     private final Tile contextGauge;
     private final Tile tokenCountTile;
     private final Tile modelTile;
     private final Tile statusTile;
 
-    // Breakdown detail tiles
+    // Breakdown tiles
     private final Tile systemToolsTile;
     private final Tile messagesTokTile;
     private final Tile freeSpaceTile;
     private final Tile bufferTile;
 
-    // Aggregate summary tiles
+    // Aggregate tiles
     private final Tile totalSessionsTile;
     private final Tile activeSessionsTile;
     private final Tile totalTokensTile;
 
+    // Currently selected
+    private SessionSnapshot selectedSession;
+
     public UsageDashboard(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
 
-        setSpacing(14);
-        setPadding(new Insets(14));
+        setSpacing(10);
+        setPadding(new Insets(10));
         setStyle("-fx-background-color: #1a1a2e;");
 
-        // --- Session picker ---
-        var pickerRow = new HBox(10);
-        pickerRow.setAlignment(Pos.CENTER_LEFT);
-        var pickerLabel = new Label("Session:");
-        pickerLabel.setTextFill(Color.WHITE);
-        pickerLabel.setStyle("-fx-font-size: 14px;");
-        sessionPicker.setPrefWidth(450);
-        sessionPicker.setOnAction(e -> onSessionSelected());
-        pickerRow.getChildren().addAll(pickerLabel, sessionPicker);
+        // --- Session table ---
+        buildSessionTable();
 
-        // --- Donut chart for context breakdown ---
+        // --- Donut chart ---
         systemToolsData = new ChartData("System/Tools", 0, COLOR_SYSTEM);
         messagesData    = new ChartData("Messages", 0, COLOR_MSGS);
         freeSpaceData   = new ChartData("Free Space", 0, COLOR_FREE);
@@ -91,40 +83,32 @@ public class UsageDashboard extends VBox {
 
         donutTile = TileBuilder.create()
                 .skinType(Tile.SkinType.DONUT_CHART)
-                .prefSize(TILE_W + 40, TILE_H + 40)
-                .title("Context Usage")
+                .prefSize(TILE_W + 30, TILE_H + 30)
+                .title("Context Window")
                 .chartData(systemToolsData, messagesData, freeSpaceData, bufferData)
                 .animated(true)
                 .build();
 
-        // --- Overall gauge ---
         contextGauge = TileBuilder.create()
                 .skinType(Tile.SkinType.GAUGE)
                 .prefSize(TILE_W, TILE_H)
                 .title("Context Used")
                 .unit("%")
-                .minValue(0)
-                .maxValue(100)
-                .value(0)
-                .thresholdVisible(true)
-                .threshold(80)
+                .minValue(0).maxValue(100).value(0)
+                .thresholdVisible(true).threshold(80)
                 .barColor(COLOR_SYSTEM)
                 .thresholdColor(Tile.TileColor.RED.color)
                 .animated(true)
                 .build();
 
-        // --- Token count ---
         tokenCountTile = TileBuilder.create()
                 .skinType(Tile.SkinType.NUMBER)
                 .prefSize(TILE_W, TILE_H)
                 .title("Tokens Used")
                 .description("of 0")
-                .value(0)
-                .decimals(0)
-                .animated(true)
+                .value(0).decimals(0).animated(true)
                 .build();
 
-        // --- Model ---
         modelTile = TileBuilder.create()
                 .skinType(Tile.SkinType.TEXT)
                 .prefSize(TILE_W, TILE_H)
@@ -133,236 +117,220 @@ public class UsageDashboard extends VBox {
                 .textVisible(true)
                 .build();
 
-        // --- Status ---
         statusTile = TileBuilder.create()
                 .skinType(Tile.SkinType.STATUS)
                 .prefSize(TILE_W, TILE_H)
                 .title("Status")
-                .description("No session")
+                .description("Select a session")
                 .build();
 
-        // --- Breakdown detail tiles ---
-        systemToolsTile = TileBuilder.create()
-                .skinType(Tile.SkinType.PERCENTAGE)
-                .prefSize(TILE_W, SMALL_H)
-                .title("System/Tools")
-                .unit("%")
-                .maxValue(100)
-                .value(0)
-                .barColor(COLOR_SYSTEM)
-                .animated(true)
-                .build();
+        systemToolsTile = buildBreakdownTile("System/Tools", COLOR_SYSTEM);
+        messagesTokTile = buildBreakdownTile("Messages", COLOR_MSGS);
+        freeSpaceTile   = buildBreakdownTile("Free Space", COLOR_FREE);
+        bufferTile      = buildBreakdownTile("Buffer", COLOR_BUFFER);
 
-        messagesTokTile = TileBuilder.create()
-                .skinType(Tile.SkinType.PERCENTAGE)
-                .prefSize(TILE_W, SMALL_H)
-                .title("Messages")
-                .unit("%")
-                .maxValue(100)
-                .value(0)
-                .barColor(COLOR_MSGS)
-                .animated(true)
-                .build();
-
-        freeSpaceTile = TileBuilder.create()
-                .skinType(Tile.SkinType.PERCENTAGE)
-                .prefSize(TILE_W, SMALL_H)
-                .title("Free Space")
-                .unit("%")
-                .maxValue(100)
-                .value(0)
-                .barColor(COLOR_FREE)
-                .animated(true)
-                .build();
-
-        bufferTile = TileBuilder.create()
-                .skinType(Tile.SkinType.PERCENTAGE)
-                .prefSize(TILE_W, SMALL_H)
-                .title("Buffer")
-                .unit("%")
-                .maxValue(100)
-                .value(0)
-                .barColor(COLOR_BUFFER)
-                .animated(true)
-                .build();
-
-        // --- Aggregate tiles ---
-        totalSessionsTile = TileBuilder.create()
-                .skinType(Tile.SkinType.NUMBER)
-                .prefSize(TILE_W, SMALL_H)
-                .title("Total Sessions")
-                .value(0)
-                .decimals(0)
-                .animated(true)
-                .build();
-
-        activeSessionsTile = TileBuilder.create()
-                .skinType(Tile.SkinType.NUMBER)
-                .prefSize(TILE_W, SMALL_H)
-                .title("Active Sessions")
-                .value(0)
-                .decimals(0)
-                .animated(true)
-                .build();
-
-        totalTokensTile = TileBuilder.create()
-                .skinType(Tile.SkinType.NUMBER)
-                .prefSize(TILE_W, SMALL_H)
-                .title("Total Tokens (all)")
-                .value(0)
-                .decimals(0)
-                .animated(true)
-                .build();
+        totalSessionsTile = buildAggregateTile("Total Sessions");
+        activeSessionsTile = buildAggregateTile("Active Sessions");
+        totalTokensTile = buildAggregateTile("Total Tokens");
 
         // --- Layout ---
-        var topRow = new HBox(8, donutTile, contextGauge, tokenCountTile, modelTile, statusTile);
-        topRow.setAlignment(Pos.CENTER);
+        var detailRow = new HBox(6, donutTile, contextGauge, tokenCountTile, modelTile, statusTile);
+        detailRow.setAlignment(Pos.CENTER);
 
-        var breakdownLabel = sectionLabel("Context Breakdown");
-
-        var breakdownRow = new HBox(8, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
+        var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
         breakdownRow.setAlignment(Pos.CENTER);
 
-        var sep = new Separator();
-        sep.setStyle("-fx-background-color: #333355;");
-
-        var aggregateLabel = sectionLabel("Aggregate (All Sessions)");
-
-        var aggregateRow = new HBox(8, totalSessionsTile, activeSessionsTile, totalTokensTile);
+        var aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
         aggregateRow.setAlignment(Pos.CENTER);
 
-        getChildren().addAll(pickerRow, topRow, breakdownLabel, breakdownRow,
-                sep, aggregateLabel, aggregateRow);
+        var tilesPane = new VBox(6,
+                sectionLabel("Selected Session"), detailRow,
+                sectionLabel("Context Breakdown"), breakdownRow,
+                new Separator(),
+                sectionLabel("Aggregate (All Sessions)"), aggregateRow);
+
+        var tilesScroll = new ScrollPane(tilesPane);
+        tilesScroll.setFitToWidth(true);
+        tilesScroll.setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
+
+        getChildren().addAll(sectionLabel("Sessions"), sessionTable, tilesScroll);
+        VBox.setVgrow(tilesScroll, Priority.ALWAYS);
     }
 
-    /** Refresh all dashboard data. Call from the FX thread. */
+    @SuppressWarnings("unchecked")
+    private void buildSessionTable() {
+        sessionTable.setPrefHeight(160);
+        sessionTable.setMaxHeight(200);
+
+        var nameCol = new TableColumn<SessionSnapshot, String>("Name");
+        nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().name()));
+        nameCol.setPrefWidth(180);
+
+        var modelCol = new TableColumn<SessionSnapshot, String>("Model");
+        modelCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().model()));
+        modelCol.setPrefWidth(130);
+
+        var statusCol = new TableColumn<SessionSnapshot, String>("Status");
+        statusCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().status().name()));
+        statusCol.setPrefWidth(80);
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null); setStyle("");
+                } else {
+                    setText(item);
+                    var color = switch (SessionStatus.valueOf(item)) {
+                        case ACTIVE -> "#4488ff";
+                        case BUSY -> "#ff8844";
+                        case IDLE -> "#44cc44";
+                        case ERROR -> "#ff4444";
+                        case ARCHIVED -> "#888888";
+                    };
+                    setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
+                }
+            }
+        });
+
+        var locCol = new TableColumn<SessionSnapshot, String>("Location");
+        locCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().remote() ? "Remote" : "Local"));
+        locCol.setPrefWidth(65);
+
+        var tokensCol = new TableColumn<SessionSnapshot, String>("Tokens");
+        tokensCol.setCellValueFactory(cd -> {
+            var u = cd.getValue().usage();
+            return new SimpleStringProperty(formatTokens(u.currentTokens()) + " / " + formatTokens(u.tokenLimit()));
+        });
+        tokensCol.setPrefWidth(100);
+
+        var pctCol = new TableColumn<SessionSnapshot, String>("Usage %");
+        pctCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(String.format("%.0f%%", cd.getValue().usage().tokenUsagePercent())));
+        pctCol.setPrefWidth(65);
+
+        var msgsCol = new TableColumn<SessionSnapshot, String>("Msgs");
+        msgsCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(String.valueOf(cd.getValue().usage().messagesCount())));
+        msgsCol.setPrefWidth(50);
+
+        var dirCol = new TableColumn<SessionSnapshot, String>("Directory");
+        dirCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().workingDirectory()));
+        dirCol.setPrefWidth(180);
+
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, locCol,
+                tokensCol, pctCol, msgsCol, dirCol);
+        sessionTable.setPlaceholder(new Label("No sessions available."));
+
+        // Selection drives the detail tiles
+        sessionTable.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, selected) -> {
+                    selectedSession = selected;
+                    if (selected != null) {
+                        updateDetailTiles(selected);
+                    } else {
+                        clearDetailTiles();
+                    }
+                });
+    }
+
+    /** Refresh from session data. Safe to call from any thread. */
     public void refresh(Collection<SessionSnapshot> sessions) {
         Platform.runLater(() -> {
-            updatePicker(sessions);
-            updateAggregate(sessions);
-            onSessionSelected();
+            var list = List.copyOf(sessions);
+            var previousId = selectedSession != null ? selectedSession.id() : null;
+
+            sessionTable.setItems(FXCollections.observableArrayList(list));
+            updateAggregateTiles(list);
+
+            // Restore selection
+            if (previousId != null) {
+                list.stream()
+                        .filter(s -> s.id().equals(previousId))
+                        .findFirst()
+                        .ifPresent(s -> sessionTable.getSelectionModel().select(s));
+            }
+            // Auto-select first if nothing selected
+            if (sessionTable.getSelectionModel().getSelectedItem() == null && !list.isEmpty()) {
+                sessionTable.getSelectionModel().selectFirst();
+            }
         });
     }
 
-    private void updatePicker(Collection<SessionSnapshot> sessions) {
-        var selected = sessionPicker.getValue();
-        var items = sessions.stream()
-                .map(this::sessionLabel)
-                .sorted()
-                .toList();
-        sessionPicker.setItems(FXCollections.observableArrayList(items));
-
-        if (selected != null && items.contains(selected)) {
-            sessionPicker.setValue(selected);
-        } else if (!items.isEmpty()) {
-            sessionPicker.setValue(items.getFirst());
-        }
-    }
-
-    private void onSessionSelected() {
-        var label = sessionPicker.getValue();
-        if (label == null) {
-            clearTiles();
-            return;
-        }
-        var session = sessionManager.getSessions().stream()
-                .filter(s -> sessionLabel(s).equals(label))
-                .findFirst()
-                .orElse(null);
-        if (session == null) {
-            clearTiles();
-            return;
-        }
-        updateSessionTiles(session);
-    }
-
-    private void updateSessionTiles(SessionSnapshot session) {
+    private void updateDetailTiles(SessionSnapshot session) {
         var u = session.usage();
 
-        // Donut chart
+        // Donut
         systemToolsData.setValue(u.systemToolsTokens());
         messagesData.setValue(u.messagesTokens());
         freeSpaceData.setValue(u.freeSpaceTokens());
         bufferData.setValue(u.bufferTokens());
 
-        // Gauge
         contextGauge.setValue(u.tokenUsagePercent());
 
-        // Token count
         tokenCountTile.setValue(u.currentTokens());
         tokenCountTile.setDescription("of " + formatTokens(u.tokenLimit()));
 
-        // Model
         modelTile.setDescription(session.model());
 
-        // Status
         statusTile.setDescription(session.status().name());
         statusTile.setActiveColor(statusColor(session.status()));
-        var location = session.remote() ? " (Remote)" : " (Local)";
-        statusTile.setText(session.status().name() + location);
+        statusTile.setText(session.status().name()
+                + (session.remote() ? " (Remote)" : " (Local)"));
 
-        // Breakdown percentages
         systemToolsTile.setValue(u.systemToolsPercent());
         systemToolsTile.setDescription(formatTokens(u.systemToolsTokens()));
-
         messagesTokTile.setValue(u.messagesPercent());
         messagesTokTile.setDescription(formatTokens(u.messagesTokens()));
-
         freeSpaceTile.setValue(u.freeSpacePercent());
         freeSpaceTile.setDescription(formatTokens(u.freeSpaceTokens()));
-
         bufferTile.setValue(u.bufferPercent());
         bufferTile.setDescription(formatTokens(u.bufferTokens()));
     }
 
-    private void clearTiles() {
+    private void clearDetailTiles() {
         systemToolsData.setValue(0);
         messagesData.setValue(0);
         freeSpaceData.setValue(0);
         bufferData.setValue(0);
-
         contextGauge.setValue(0);
         tokenCountTile.setValue(0);
         tokenCountTile.setDescription("of 0");
         modelTile.setDescription("—");
-        statusTile.setDescription("No session");
+        statusTile.setDescription("Select a session");
         statusTile.setText("");
-
-        systemToolsTile.setValue(0);
-        systemToolsTile.setDescription("");
-        messagesTokTile.setValue(0);
-        messagesTokTile.setDescription("");
-        freeSpaceTile.setValue(0);
-        freeSpaceTile.setDescription("");
-        bufferTile.setValue(0);
-        bufferTile.setDescription("");
+        for (var tile : List.of(systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile)) {
+            tile.setValue(0);
+            tile.setDescription("");
+        }
     }
 
-    private void updateAggregate(Collection<SessionSnapshot> sessions) {
+    private void updateAggregateTiles(List<SessionSnapshot> sessions) {
         totalSessionsTile.setValue(sessions.size());
-
-        long active = sessions.stream()
-                .filter(s -> s.status() != SessionStatus.ARCHIVED)
-                .count();
-        activeSessionsTile.setValue(active);
-
-        int totalTokens = sessions.stream()
-                .mapToInt(s -> s.usage().currentTokens())
-                .sum();
-        totalTokensTile.setValue(totalTokens);
+        activeSessionsTile.setValue(sessions.stream()
+                .filter(s -> s.status() != SessionStatus.ARCHIVED).count());
+        totalTokensTile.setValue(sessions.stream()
+                .mapToInt(s -> s.usage().currentTokens()).sum());
     }
 
-    private String sessionLabel(SessionSnapshot s) {
-        var sb = new StringBuilder(s.name());
-        if (!"unknown".equals(s.model())) {
-            sb.append(" [").append(s.model()).append("]");
-        }
-        if (s.usage().tokenLimit() > 0) {
-            sb.append(" · ").append(formatTokens(s.usage().currentTokens()))
-              .append("/").append(formatTokens(s.usage().tokenLimit()))
-              .append(" (").append((int) s.usage().tokenUsagePercent()).append("%)");
-        }
-        return sb.toString();
+    // --- Factory helpers ---
+
+    private Tile buildBreakdownTile(String title, Color color) {
+        return TileBuilder.create()
+                .skinType(Tile.SkinType.PERCENTAGE)
+                .prefSize(TILE_W, SMALL_H)
+                .title(title).unit("%")
+                .maxValue(100).value(0)
+                .barColor(color)
+                .animated(true).build();
+    }
+
+    private Tile buildAggregateTile(String title) {
+        return TileBuilder.create()
+                .skinType(Tile.SkinType.NUMBER)
+                .prefSize(TILE_W, SMALL_H)
+                .title(title).value(0).decimals(0)
+                .animated(true).build();
     }
 
     private static Color statusColor(SessionStatus status) {
