@@ -57,19 +57,17 @@ public class TerminalLauncher {
     private List<String> buildMacCommand(String shellCmd) {
         // Detect iTerm2, then fall back to Terminal.app
         if (new File("/Applications/iTerm.app").exists()) {
-            String script = """
-                    tell application "iTerm"
-                        activate
-                        create window with default profile command "%s"
-                    end tell""".formatted(shellCmd);
-            return List.of("osascript", "-e", script);
+            return List.of("osascript",
+                    "-e", "tell application \"iTerm\"",
+                    "-e", "activate",
+                    "-e", "create window with default profile command \"" + shellCmd + "\"",
+                    "-e", "end tell");
         }
-        String script = """
-                tell application "Terminal"
-                    activate
-                    do script "%s"
-                end tell""".formatted(shellCmd);
-        return List.of("osascript", "-e", script);
+        return List.of("osascript",
+                "-e", "tell application \"Terminal\"",
+                "-e", "activate",
+                "-e", "do script \"" + shellCmd + "\"",
+                "-e", "end tell");
     }
 
     private List<String> buildWindowsCommand(String shellCmd) {
