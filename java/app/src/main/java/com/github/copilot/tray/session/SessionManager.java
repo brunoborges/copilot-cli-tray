@@ -67,7 +67,7 @@ public class SessionManager {
 
     public void updateUsage(String id, int currentTokens, int tokenLimit, int messagesCount) {
         sessions.computeIfPresent(id, (k, s) ->
-                s.withUsage(new UsageSnapshot(currentTokens, tokenLimit, messagesCount)));
+                s.withUsage(UsageSnapshot.fromSdk(currentTokens, tokenLimit, messagesCount)));
         notifyListeners();
     }
 
