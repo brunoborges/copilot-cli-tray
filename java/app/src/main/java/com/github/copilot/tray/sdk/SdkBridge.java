@@ -5,6 +5,7 @@ import com.github.copilot.sdk.CopilotSession;
 import com.github.copilot.sdk.ConnectionState;
 import com.github.copilot.sdk.json.CopilotClientOptions;
 import com.github.copilot.sdk.json.ModelInfo;
+import com.github.copilot.sdk.json.PermissionHandler;
 import com.github.copilot.sdk.json.ResumeSessionConfig;
 import com.github.copilot.sdk.json.SessionMetadata;
 import org.slf4j.Logger;
@@ -71,6 +72,7 @@ public class SdkBridge {
         if (attachedSessions.containsKey(sessionId)) return;
 
         var config = new ResumeSessionConfig()
+                .setOnPermissionRequest(PermissionHandler.APPROVE_ALL)
                 .setOnEvent(event -> eventRouter.route(sessionId, event));
         client.resumeSession(sessionId, config)
                 .thenAccept(session -> {
