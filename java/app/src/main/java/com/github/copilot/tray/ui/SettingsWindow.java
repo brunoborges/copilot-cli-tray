@@ -19,8 +19,6 @@ import java.util.Collection;
  */
 public class SettingsWindow {
 
-    private static final int TRAY_SESSION_OVERFLOW = 10;
-
     private final SessionManager sessionManager;
     private final ConfigStore configStore;
     private final java.util.function.Consumer<String> deleteHandler;
@@ -82,14 +80,6 @@ public class SettingsWindow {
             stage.show();
             stage.toFront();
         });
-    }
-
-    /**
-     * Returns the overflow threshold. When the total session count exceeds this,
-     * the tray menu should redirect to the settings window instead.
-     */
-    public static int getTraySessionOverflow() {
-        return TRAY_SESSION_OVERFLOW;
     }
 
     /**

@@ -90,27 +90,16 @@ public class TrayManager {
         trayIcon.setPopupMenu(buildMenu(sessions));
     }
 
+    private static final int TRAY_GROUP_LIMIT = 10;
+
     private PopupMenu buildMenu(Collection<SessionSnapshot> sessions) {
         var menu = new PopupMenu("Copilot CLI Tray");
 
-        // If more than 10 sessions total, show a summary + link to settings window
-        if (sessions.size() > 10) {
-            long localCount = sessions.stream().filter(s -> !s.remote()).count();
-            long remoteCount = sessions.stream().filter(SessionSnapshot::remote).count();
-            long activeCount = sessions.stream()
-                    .filter(s -> s.status() != SessionStatus.ARCHIVED).count();
+        var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
+        var remoteSessions = sessions.stream().filter(SessionSnapshot::remote).toList();
 
-            menu.add(disabledItem(sessions.size() + " sessions (" + activeCount
-                    + " active, " + localCount + " local, " + remoteCount + " remote)"));
-            menu.add(actionItem("View All Sessions...", e -> onShowSessions.run()));
-        } else {
-            // Split sessions by local vs remote, then by active vs archived
-            var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
-            var remoteSessions = sessions.stream().filter(SessionSnapshot::remote).toList();
-
-            menu.add(buildSessionGroup("Local Sessions", localSessions));
-            menu.add(buildSessionGroup("Remote Sessions", remoteSessions));
-        }
+        menu.add(buildSessionGroup("Local Sessions", localSessions));
+        menu.add(buildSessionGroup("Remote Sessions", remoteSessions));
 
         menu.addSeparator();
 
@@ -143,7 +132,8 @@ public class TrayManager {
 
     /**
      * Build a menu group (e.g. "Local Sessions" or "Remote Sessions") with
-     * active and archived sub-sections.
+     * active and archived sub-sections, capped at TRAY_GROUP_LIMIT each.
+     * When a sub-section exceeds the limit, a "View All..." item is appended.
      */
     private Menu buildSessionGroup(String label, java.util.List<SessionSnapshot> sessions) {
         var active = sessions.stream()
@@ -160,23 +150,30 @@ public class TrayManager {
             return groupMenu;
         }
 
-        // Active sub-section
+        // Active sub-section (capped)
         var activeMenu = new Menu("Active (" + active.size() + ")");
         if (active.isEmpty()) {
             activeMenu.add(disabledItem("None"));
         } else {
-            for (var session : active) {
+            var shown = active.stream().limit(TRAY_GROUP_LIMIT).toList();
+            for (var session : shown) {
                 activeMenu.add(buildSessionMenu(session));
+            }
+            if (active.size() > TRAY_GROUP_LIMIT) {
+                activeMenu.addSeparator();
+                activeMenu.add(actionItem("View All " + active.size() + " Sessions...",
+                        e -> onShowSessions.run()));
             }
         }
         groupMenu.add(activeMenu);
 
-        // Archived sub-section
+        // Archived sub-section (capped)
         var archivedMenu = new Menu("Archived (" + archived.size() + ")");
         if (archived.isEmpty()) {
             archivedMenu.add(disabledItem("None"));
         } else {
-            for (var session : archived) {
+            var shown = archived.stream().limit(TRAY_GROUP_LIMIT).toList();
+            for (var session : shown) {
                 var item = new Menu(session.name());
                 item.add(actionItem("Resume in Terminal", e ->
                         terminalLauncher.resumeSession(session.id())));
@@ -184,6 +181,11 @@ public class TrayManager {
                         sdkBridge.deleteSession(session.id())
                                 .thenRun(() -> sessionManager.removeSession(session.id()))));
                 archivedMenu.add(item);
+            }
+            if (archived.size() > TRAY_GROUP_LIMIT) {
+                archivedMenu.addSeparator();
+                archivedMenu.add(actionItem("View All " + archived.size() + " Sessions...",
+                        e -> onShowSessions.run()));
             }
         }
         groupMenu.add(archivedMenu);
