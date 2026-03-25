@@ -95,6 +95,10 @@ public class TrayManager {
     private PopupMenu buildMenu(Collection<SessionSnapshot> sessions) {
         var menu = new PopupMenu("Copilot CLI Tray");
 
+        // Dashboard (first item)
+        menu.add(actionItem("Dashboard", e -> onOpenSettings.run()));
+        menu.addSeparator();
+
         var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
         var remoteSessions = sessions.stream().filter(SessionSnapshot::remote).toList();
 
@@ -112,9 +116,6 @@ public class TrayManager {
         menu.add(usageMenu);
 
         menu.addSeparator();
-
-        // Settings
-        menu.add(actionItem("Open Settings...", e -> onOpenSettings.run()));
 
         // New session
         menu.add(actionItem("New Session", e -> terminalLauncher.newSession()));
