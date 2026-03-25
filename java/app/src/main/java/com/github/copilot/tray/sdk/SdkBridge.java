@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -68,12 +69,20 @@ public class SdkBridge {
      * Uses ResumeSessionConfig.setOnEvent to receive all events for this session.
      */
     public void attachSession(String sessionId, EventRouter eventRouter) {
+        attachSession(sessionId, (sid, event) -> eventRouter.route(sid, event));
+    }
+
+    /**
+     * Attach to a session with a generic event handler.
+     */
+    public void attachSession(String sessionId,
+                              BiConsumer<String, com.github.copilot.sdk.events.AbstractSessionEvent> eventHandler) {
         if (client == null || !connected) return;
         if (attachedSessions.containsKey(sessionId)) return;
 
         var config = new ResumeSessionConfig()
                 .setOnPermissionRequest(PermissionHandler.APPROVE_ALL)
-                .setOnEvent(event -> eventRouter.route(sessionId, event));
+                .setOnEvent(event -> eventHandler.accept(sessionId, event));
         client.resumeSession(sessionId, config)
                 .thenAccept(session -> {
                     attachedSessions.put(sessionId, session);

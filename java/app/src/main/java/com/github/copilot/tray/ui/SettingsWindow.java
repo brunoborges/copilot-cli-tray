@@ -53,7 +53,7 @@ public class SettingsWindow {
     private GridPane detailGrid;
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
-    private Button resumeBtn, renameBtn, deleteBtn;
+    private Button resumeBtn, attachBtn, renameBtn, deleteBtn;
     private SessionSnapshot selectedSession;
     private String selectedDirectory; // track across refreshes
     private boolean refreshing;
@@ -221,6 +221,17 @@ public class SettingsWindow {
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
         resumeBtn.setOnAction(e -> { if (selectedSession != null) resumeHandler.accept(selectedSession.id()); });
+        attachBtn = new Button("Attach");
+        attachBtn.setDisable(true);
+        attachBtn.setOnAction(e -> {
+            if (selectedSession == null) return;
+            var session = selectedSession;
+            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {
+                sdkBridge.detachSession(session.id());
+            });
+            sdkBridge.attachSession(session.id(), (sid, event) -> logWindow.onEvent(sid, event));
+            logWindow.show();
+        });
         renameBtn = new Button("Rename");
         renameBtn.setDisable(true);
         renameBtn.setOnAction(e -> {
@@ -278,7 +289,7 @@ public class SettingsWindow {
                         }
                     });
         });
-        actionBar = new HBox(8, resumeBtn, renameBtn, deleteBtn);
+        actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn);
         actionBar.setPadding(new Insets(6));
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
@@ -474,6 +485,7 @@ public class SettingsWindow {
         boolean none = selectionCount == 0;
         boolean multi = selectionCount > 1;
         resumeBtn.setDisable(none || multi);
+        attachBtn.setDisable(none || multi);
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
     }
