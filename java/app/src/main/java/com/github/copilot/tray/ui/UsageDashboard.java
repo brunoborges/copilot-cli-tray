@@ -20,15 +20,13 @@ import java.util.stream.Collectors;
 
 /**
  * Real-time usage dashboard built with Hansolo TilesFX.
- * Supports filtering by working directory.
+ * Uses the same directory-first layout as the Sessions tab.
  */
 public class UsageDashboard extends VBox {
 
     private static final double TILE_W = 180;
     private static final double TILE_H = 180;
     private static final double SMALL_H = 130;
-
-    private static final String ALL_DIRECTORIES = "All Directories";
 
     private static final Color COLOR_SYSTEM = Color.web("#7b8cde");
     private static final Color COLOR_MSGS   = Color.web("#c0c0c0");
@@ -37,11 +35,11 @@ public class UsageDashboard extends VBox {
 
     private final SessionManager sessionManager;
 
-    // Directory filter
-    private final ComboBox<String> directoryFilter = new ComboBox<>();
-    private String selectedDirectoryFilter = ALL_DIRECTORIES;
+    // Directory list (mirrors Sessions tab)
+    private final ListView<String> directoryList = new ListView<>();
+    private String selectedDirectoryPath; // stripped badge
 
-    // Session table
+    // Session table (multi-select like Sessions tab)
     private final TableView<SessionSnapshot> sessionTable = new TableView<>();
 
     // Donut chart data
@@ -68,32 +66,30 @@ public class UsageDashboard extends VBox {
     private final Tile activeSessionsTile;
     private final Tile totalTokensTile;
 
-    private SessionSnapshot selectedSession;
     private boolean refreshing;
-    private List<SessionSnapshot> allSessions = List.of(); // unfiltered
+    private List<SessionSnapshot> allSessions = List.of();
 
     public UsageDashboard(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
 
-        setSpacing(10);
+        setSpacing(8);
         setPadding(new Insets(10));
         setStyle("-fx-background-color: #1a1a2e;");
 
-        // --- Directory filter ---
-        directoryFilter.setPrefWidth(350);
-        directoryFilter.setItems(FXCollections.observableArrayList(ALL_DIRECTORIES));
-        directoryFilter.setValue(ALL_DIRECTORIES);
-        directoryFilter.setOnAction(e -> {
-            selectedDirectoryFilter = directoryFilter.getValue();
-            applyFilter();
-        });
-        var filterRow = new HBox(8, sectionLabel("Directory:"), directoryFilter);
-        filterRow.setAlignment(Pos.CENTER_LEFT);
+        // --- Directory list (left pane) ---
+        directoryList.setPrefWidth(250);
+        directoryList.setPlaceholder(new Label("No directories found."));
+        directoryList.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, nv) -> {
+                    if (refreshing) return;
+                    selectedDirectoryPath = nv != null ? stripBadge(nv) : null;
+                    populateSessionTable();
+                });
 
-        // --- Session table ---
+        // --- Session table (right, top) ---
         buildSessionTable();
 
-        // --- Donut chart ---
+        // --- Tiles ---
         systemToolsData = new ChartData("System/Tools", 0, COLOR_SYSTEM);
         messagesData    = new ChartData("Messages", 0, COLOR_MSGS);
         freeSpaceData   = new ChartData("Free Space", 0, COLOR_FREE);
@@ -165,20 +161,30 @@ public class UsageDashboard extends VBox {
                 sectionLabel("Selected Session"), detailRow,
                 sectionLabel("Context Breakdown"), breakdownRow,
                 new Separator(),
-                sectionLabel("Aggregate (Filtered Sessions)"), aggregateRow);
+                sectionLabel("Aggregate (Directory)"), aggregateRow);
 
         var tilesScroll = new ScrollPane(tilesPane);
         tilesScroll.setFitToWidth(true);
         tilesScroll.setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
 
-        getChildren().addAll(filterRow, sectionLabel("Sessions"), sessionTable, tilesScroll);
+        // Right pane: session table + tiles
+        var rightPane = new VBox(6, sectionLabel("Sessions"), sessionTable, tilesScroll);
         VBox.setVgrow(tilesScroll, Priority.ALWAYS);
+
+        // Split: directory list (left) | session table + tiles (right)
+        var split = new SplitPane(directoryList, rightPane);
+        split.setDividerPositions(0.22);
+        split.setStyle("-fx-background-color: #1a1a2e;");
+
+        getChildren().add(split);
+        VBox.setVgrow(split, Priority.ALWAYS);
     }
 
     @SuppressWarnings("unchecked")
     private void buildSessionTable() {
-        sessionTable.setPrefHeight(160);
-        sessionTable.setMaxHeight(200);
+        sessionTable.setPrefHeight(180);
+        sessionTable.setMaxHeight(220);
+        sessionTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         var nameCol = new TableColumn<SessionSnapshot, String>("Name");
         nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().name()));
@@ -212,10 +218,6 @@ public class UsageDashboard extends VBox {
             }
         });
 
-        var locCol = new TableColumn<SessionSnapshot, String>("Location");
-        locCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().remote() ? "Remote" : "Local"));
-        locCol.setPrefWidth(65);
-
         var tokensCol = new TableColumn<SessionSnapshot, String>("Tokens");
         tokensCol.setCellValueFactory(cd -> {
             var u = cd.getValue().usage();
@@ -233,21 +235,17 @@ public class UsageDashboard extends VBox {
                 new SimpleStringProperty(String.valueOf(cd.getValue().usage().messagesCount())));
         msgsCol.setPrefWidth(50);
 
-        var dirCol = new TableColumn<SessionSnapshot, String>("Directory");
-        dirCol.setCellValueFactory(cd -> new SimpleStringProperty(
-                SettingsWindow.shortenPath(cd.getValue().workingDirectory())));
-        dirCol.setPrefWidth(180);
-
-        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, locCol,
-                tokensCol, pctCol, msgsCol, dirCol);
-        sessionTable.setPlaceholder(new Label("No sessions available."));
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, tokensCol, pctCol, msgsCol);
+        sessionTable.setPlaceholder(new Label("Select a directory."));
 
         sessionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, selected) -> {
                     if (refreshing) return;
-                    selectedSession = selected;
-                    if (selected != null) {
+                    var selectedItems = sessionTable.getSelectionModel().getSelectedItems();
+                    if (selectedItems.size() == 1 && selected != null) {
                         updateDetailTiles(selected);
+                    } else if (selectedItems.size() > 1) {
+                        updateAggregateDetailTiles(List.copyOf(selectedItems));
                     } else {
                         clearDetailTiles();
                     }
@@ -258,77 +256,88 @@ public class UsageDashboard extends VBox {
     public void refresh(Collection<SessionSnapshot> sessions) {
         Platform.runLater(() -> {
             allSessions = List.copyOf(sessions);
-            updateDirectoryFilter();
-            applyFilter();
+            refreshDirectoryList();
         });
     }
 
-    private void updateDirectoryFilter() {
-        var dirs = allSessions.stream()
-                .map(SessionSnapshot::workingDirectory)
-                .distinct()
-                .sorted()
-                .toList();
-        var items = new ArrayList<String>();
-        items.add(ALL_DIRECTORIES);
-        for (var d : dirs) {
-            items.add(d);
-        }
-        var prev = directoryFilter.getValue();
-        directoryFilter.setItems(FXCollections.observableArrayList(items));
-        if (prev != null && items.contains(prev)) {
-            directoryFilter.setValue(prev);
-        } else {
-            directoryFilter.setValue(ALL_DIRECTORIES);
-        }
-        selectedDirectoryFilter = directoryFilter.getValue();
-    }
-
-    private void applyFilter() {
-        var filtered = allSessions;
-        if (!ALL_DIRECTORIES.equals(selectedDirectoryFilter) && selectedDirectoryFilter != null) {
-            filtered = allSessions.stream()
-                    .filter(s -> selectedDirectoryFilter.equals(s.workingDirectory()))
-                    .toList();
-        }
-
-        var list = List.copyOf(filtered);
-        var previousId = selectedSession != null ? selectedSession.id() : null;
-        int scrollIndex = sessionTable.getSelectionModel().getSelectedIndex();
-
+    private void refreshDirectoryList() {
         refreshing = true;
-        sessionTable.setItems(FXCollections.observableArrayList(list));
+        String previousDir = selectedDirectoryPath;
+        String previousSessionId = null;
+        var selectedItem = sessionTable.getSelectionModel().getSelectedItem();
+        if (selectedItem != null) previousSessionId = selectedItem.id();
 
-        // Restore selection by session ID
-        SessionSnapshot restoredSession = null;
-        if (previousId != null) {
-            for (int i = 0; i < list.size(); i++) {
-                if (list.get(i).id().equals(previousId)) {
-                    sessionTable.getSelectionModel().select(i);
-                    sessionTable.scrollTo(i);
-                    restoredSession = list.get(i);
+        // Group by directory
+        var byDir = allSessions.stream()
+                .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory,
+                        TreeMap::new, Collectors.toList()));
+
+        // Build labels with badges (same format as Sessions tab)
+        var dirLabels = new ArrayList<String>();
+        for (var entry : byDir.entrySet()) {
+            var dir = entry.getKey();
+            var list = entry.getValue();
+            long activeCount = list.stream()
+                    .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
+                    .count();
+            var badge = new StringBuilder();
+            badge.append(dir).append("  [").append(list.size()).append("]");
+            if (activeCount > 0) badge.append(" ●");
+            dirLabels.add(badge.toString());
+        }
+
+        directoryList.setItems(FXCollections.observableArrayList(dirLabels));
+
+        // Restore directory selection
+        if (previousDir != null) {
+            for (int i = 0; i < dirLabels.size(); i++) {
+                if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
+                    directoryList.getSelectionModel().select(i);
+                    selectedDirectoryPath = previousDir;
                     break;
                 }
             }
         }
-        if (restoredSession == null && !list.isEmpty()) {
-            int idx = Math.min(scrollIndex, list.size() - 1);
-            if (idx >= 0) {
-                sessionTable.getSelectionModel().select(idx);
-                sessionTable.scrollTo(idx);
-                restoredSession = list.get(idx);
-            } else {
-                sessionTable.getSelectionModel().selectFirst();
-                restoredSession = list.getFirst();
-            }
-        }
         refreshing = false;
 
-        selectedSession = restoredSession;
-        if (restoredSession != null) {
-            updateDetailTiles(restoredSession);
+        // Populate session table
+        populateSessionTable();
+
+        // Restore session selection
+        if (previousSessionId != null) {
+            for (int i = 0; i < sessionTable.getItems().size(); i++) {
+                if (sessionTable.getItems().get(i).id().equals(previousSessionId)) {
+                    sessionTable.getSelectionModel().select(i);
+                    return;
+                }
+            }
         }
-        updateAggregateTiles(list);
+
+        // Update aggregate tiles for the filtered directory
+        var dirSessions = getFilteredSessions();
+        updateAggregateTiles(dirSessions);
+    }
+
+    private void populateSessionTable() {
+        if (selectedDirectoryPath == null) {
+            sessionTable.setItems(FXCollections.emptyObservableList());
+            updateAggregateTiles(List.of());
+            return;
+        }
+        var sessions = allSessions.stream()
+                .filter(s -> selectedDirectoryPath.equals(s.workingDirectory()))
+                .sorted(Comparator.comparing(SessionSnapshot::lastActivityAt,
+                        Comparator.nullsFirst(Comparator.reverseOrder())))
+                .toList();
+        sessionTable.setItems(FXCollections.observableArrayList(sessions));
+        updateAggregateTiles(sessions);
+    }
+
+    private List<SessionSnapshot> getFilteredSessions() {
+        if (selectedDirectoryPath == null) return allSessions;
+        return allSessions.stream()
+                .filter(s -> selectedDirectoryPath.equals(s.workingDirectory()))
+                .toList();
     }
 
     private void updateDetailTiles(SessionSnapshot session) {
@@ -359,6 +368,37 @@ public class UsageDashboard extends VBox {
         freeSpaceTile.setDescription(formatTokens(u.freeSpaceTokens()));
         bufferTile.setValue(u.bufferPercent());
         bufferTile.setDescription(formatTokens(u.bufferTokens()));
+    }
+
+    private void updateAggregateDetailTiles(List<SessionSnapshot> selected) {
+        int totalTokens = selected.stream().mapToInt(s -> s.usage().currentTokens()).sum();
+        int maxLimit = selected.stream().mapToInt(s -> s.usage().tokenLimit()).max().orElse(0);
+        double avgPct = selected.stream().mapToDouble(s -> s.usage().tokenUsagePercent()).average().orElse(0);
+
+        systemToolsData.setValue(selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum());
+        messagesData.setValue(selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum());
+        freeSpaceData.setValue(selected.stream().mapToInt(s -> s.usage().freeSpaceTokens()).sum());
+        bufferData.setValue(selected.stream().mapToInt(s -> s.usage().bufferTokens()).sum());
+
+        contextGauge.setValue(avgPct);
+
+        tokenCountTile.setValue(totalTokens);
+        tokenCountTile.setDescription(selected.size() + " sessions selected");
+
+        modelTile.setDescription(selected.stream().map(SessionSnapshot::model).distinct().count() == 1
+                ? selected.getFirst().model() : "multiple");
+
+        statusTile.setDescription(selected.size() + " sessions");
+        statusTile.setText("");
+
+        systemToolsTile.setValue(0);
+        systemToolsTile.setDescription(formatTokens((int) systemToolsData.getValue()));
+        messagesTokTile.setValue(0);
+        messagesTokTile.setDescription(formatTokens((int) messagesData.getValue()));
+        freeSpaceTile.setValue(0);
+        freeSpaceTile.setDescription(formatTokens((int) freeSpaceData.getValue()));
+        bufferTile.setValue(0);
+        bufferTile.setDescription(formatTokens((int) bufferData.getValue()));
     }
 
     private void clearDetailTiles() {
@@ -429,5 +469,12 @@ public class UsageDashboard extends VBox {
         label.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
         label.setPadding(new Insets(4, 0, 0, 4));
         return label;
+    }
+
+    /** Strip badge suffix from directory label to get the raw path. */
+    private static String stripBadge(String label) {
+        if (label == null) return null;
+        int idx = label.indexOf("  [");
+        return idx >= 0 ? label.substring(0, idx) : label;
     }
 }
