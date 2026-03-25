@@ -204,8 +204,6 @@ public class SettingsWindow {
                 }
             });
         });
-        var cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(e -> { if (selectedSession != null) deleteHandler.accept(selectedSession.id()); });
         var deleteBtn = new Button("Delete");
         deleteBtn.setStyle("-fx-text-fill: red;");
         deleteBtn.setOnAction(e -> {
@@ -221,7 +219,7 @@ public class SettingsWindow {
                         }
                     });
         });
-        actionBar = new HBox(8, resumeBtn, renameBtn, cancelBtn, deleteBtn);
+        actionBar = new HBox(8, resumeBtn, renameBtn, deleteBtn);
         actionBar.setPadding(new Insets(6));
         actionBar.setDisable(true);
 
