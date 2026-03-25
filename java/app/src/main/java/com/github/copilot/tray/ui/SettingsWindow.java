@@ -208,18 +208,15 @@ public class SettingsWindow {
         detailPane = new VBox(placeholderLabel);
         detailPane.setPadding(new Insets(10));
 
-        // Usage tiles pane (embedded in sub-tab)
+        // Usage tiles pane
         usageTilesPane = new UsageTilesPane();
 
         var detailScroll = new ScrollPane(detailPane);
         detailScroll.setFitToWidth(true);
 
-        var subTabPane = new TabPane();
-        subTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        subTabPane.getTabs().addAll(
-                new Tab("Details", detailScroll),
-                new Tab("Usage", usageTilesPane));
-        subTabPane.setStyle("-fx-tab-min-height: 24; -fx-tab-max-height: 24;");
+        // Detail (left 30%) + Usage (right 70%) side by side
+        var detailUsageSplit = new SplitPane(detailScroll, usageTilesPane);
+        detailUsageSplit.setDividerPositions(0.30);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -290,9 +287,9 @@ public class SettingsWindow {
         var topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
-        // Bottom: detail/usage sub-tabs + actions
-        var bottomPane = new VBox(subTabPane, actionPane);
-        VBox.setVgrow(subTabPane, Priority.ALWAYS);
+        // Bottom: details + usage side by side, plus actions
+        var bottomPane = new VBox(detailUsageSplit, actionPane);
+        VBox.setVgrow(detailUsageSplit, Priority.ALWAYS);
 
         // Vertical split so user can resize table vs detail area
         var rightSplit = new SplitPane(topPane, bottomPane);
