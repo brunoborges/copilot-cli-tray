@@ -72,10 +72,29 @@ public final class SessionDiskReader {
     }
 
     /**
-     * Read stats for a session from its on-disk directory.
+     * Read stats for a session from its on-disk storage.
+     * Handles both directory-based (modern) and .jsonl file (legacy) formats.
      */
     public static DiskStats readStats(String sessionId) {
-        return readStats(SESSION_STORE.resolve(sessionId));
+        var sessionDir = SESSION_STORE.resolve(sessionId);
+        if (Files.isDirectory(sessionDir)) {
+            return readStats(sessionDir);
+        }
+        // Legacy: single .jsonl file — treat the file itself as the events source
+        var jsonlFile = SESSION_STORE.resolve(sessionId + ".jsonl");
+        if (Files.exists(jsonlFile)) {
+            return readStatsFromFile(jsonlFile);
+        }
+        return DiskStats.EMPTY;
+    }
+
+    /** Read stats from a legacy single .jsonl file (no workspace.yaml). */
+    private static DiskStats readStatsFromFile(Path eventsFile) {
+        long fileSize = 0;
+        try {
+            fileSize = Files.size(eventsFile);
+        } catch (IOException e) { /* ignore */ }
+        return parseEventsFile(eventsFile, "", fileSize);
     }
 
     /**
@@ -101,6 +120,10 @@ public final class SessionDiskReader {
             LOG.debug("Cannot read file size for {}", eventsFile);
         }
 
+        return parseEventsFile(eventsFile, workingDirectory, fileSize);
+    }
+
+    private static DiskStats parseEventsFile(Path eventsFile, String workingDirectory, long fileSize) {
         int userMessages = 0;
         int assistantMessages = 0;
         String firstUserMessage = "";
@@ -149,7 +172,7 @@ public final class SessionDiskReader {
                 }
             }
         } catch (IOException e) {
-            LOG.debug("Error reading events for {}: {}", sessionDir.getFileName(), e.getMessage());
+            LOG.debug("Error reading events for {}: {}", eventsFile.getFileName(), e.getMessage());
         }
 
         return new DiskStats(userMessages, assistantMessages, fileSize,
@@ -239,23 +262,37 @@ public final class SessionDiskReader {
     }
 
     /**
-     * Delete a session's directory from disk.
+     * Delete a session from disk. Handles both formats:
+     * - Modern: directory {@code session-state/<id>/} containing events.jsonl
+     * - Legacy: single file {@code session-state/<id>.jsonl}
      * @return true if successfully deleted, false if not found or error
      */
     public static boolean deleteFromDisk(String sessionId) {
         var sessionDir = SESSION_STORE.resolve(sessionId);
-        if (!Files.isDirectory(sessionDir)) {
-            LOG.debug("Session directory not found for deletion: {}", sessionId);
-            return false;
+        if (Files.isDirectory(sessionDir)) {
+            try {
+                deleteDirectoryRecursively(sessionDir);
+                LOG.info("Deleted session directory from disk: {}", sessionId);
+                return true;
+            } catch (IOException e) {
+                LOG.error("Failed to delete session {} from disk", sessionId, e);
+                return false;
+            }
         }
-        try {
-            deleteDirectoryRecursively(sessionDir);
-            LOG.info("Deleted session from disk: {}", sessionId);
-            return true;
-        } catch (IOException e) {
-            LOG.error("Failed to delete session {} from disk", sessionId, e);
-            return false;
+        // Legacy format: single .jsonl file
+        var jsonlFile = SESSION_STORE.resolve(sessionId + ".jsonl");
+        if (Files.exists(jsonlFile)) {
+            try {
+                Files.delete(jsonlFile);
+                LOG.info("Deleted legacy session file from disk: {}", sessionId);
+                return true;
+            } catch (IOException e) {
+                LOG.error("Failed to delete legacy session file {} from disk", sessionId, e);
+                return false;
+            }
         }
+        LOG.debug("Session not found on disk for deletion: {}", sessionId);
+        return false;
     }
 
     private static void deleteDirectoryRecursively(Path dir) throws IOException {
