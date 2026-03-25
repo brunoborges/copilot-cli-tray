@@ -47,6 +47,7 @@ public class SettingsWindow {
     private TableView<SessionSnapshot> sessionTable;
     private Label detailLabel;
     private HBox actionBar;
+    private Button resumeBtn, renameBtn, deleteBtn;
     private SessionSnapshot selectedSession;
     private String selectedDirectory; // track across refreshes
     private boolean refreshing;
@@ -169,16 +170,14 @@ public class SettingsWindow {
                     if (selected.size() == 1) {
                         selectedSession = selected.getFirst();
                         showSessionDetail(selectedSession);
-                        actionBar.setDisable(false);
                     } else if (selected.size() > 1) {
                         selectedSession = selected.getFirst();
                         showMultiDetail(selected);
-                        actionBar.setDisable(false);
                     } else {
                         selectedSession = null;
                         detailLabel.setText("Select a session to view details.");
-                        actionBar.setDisable(true);
                     }
+                    updateActionButtons(selected.size());
                 });
 
         // --- Right bottom: detail + actions ---
@@ -187,9 +186,11 @@ public class SettingsWindow {
         detailLabel.setPadding(new Insets(10));
         detailLabel.setStyle("-fx-font-family: monospace; -fx-font-size: 12px;");
 
-        var resumeBtn = new Button("Resume in Terminal");
+        resumeBtn = new Button("Resume in Terminal");
+        resumeBtn.setDisable(true);
         resumeBtn.setOnAction(e -> { if (selectedSession != null) resumeHandler.accept(selectedSession.id()); });
-        var renameBtn = new Button("Rename");
+        renameBtn = new Button("Rename");
+        renameBtn.setDisable(true);
         renameBtn.setOnAction(e -> {
             if (selectedSession == null) return;
             var dialog = new TextInputDialog(selectedSession.name());
@@ -204,7 +205,8 @@ public class SettingsWindow {
                 }
             });
         });
-        var deleteBtn = new Button("Delete");
+        deleteBtn = new Button("Delete");
+        deleteBtn.setDisable(true);
         deleteBtn.setStyle("-fx-text-fill: red;");
         deleteBtn.setOnAction(e -> {
             var selected = List.copyOf(sessionTable.getSelectionModel().getSelectedItems());
@@ -216,12 +218,12 @@ public class SettingsWindow {
                     .showAndWait().ifPresent(bt -> {
                         if (bt == ButtonType.YES) {
                             for (var s : selected) deleteHandler.accept(s.id());
+                            sessionTable.getSelectionModel().clearSelection();
                         }
                     });
         });
         actionBar = new HBox(8, resumeBtn, renameBtn, deleteBtn);
         actionBar.setPadding(new Insets(6));
-        actionBar.setDisable(true);
 
         var detailScroll = new ScrollPane(detailLabel);
         detailScroll.setFitToWidth(true);
@@ -368,6 +370,14 @@ public class SettingsWindow {
     private boolean isRemoteSelected() {
         if (locationToggle == null || locationToggle.getSelectedToggle() == null) return false;
         return "remote".equals(locationToggle.getSelectedToggle().getUserData());
+    }
+
+    private void updateActionButtons(int selectionCount) {
+        boolean none = selectionCount == 0;
+        boolean multi = selectionCount > 1;
+        resumeBtn.setDisable(none || multi);
+        renameBtn.setDisable(none || multi);
+        deleteBtn.setDisable(none);
     }
 
     private void showSessionDetail(SessionSnapshot session) {
