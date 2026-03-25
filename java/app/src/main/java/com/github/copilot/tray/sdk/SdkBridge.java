@@ -79,22 +79,28 @@ public class SdkBridge {
      */
     public CompletableFuture<Void> attachSession(String sessionId,
                               BiConsumer<String, com.github.copilot.sdk.events.AbstractSessionEvent> eventHandler) {
+        LOG.info("attachSession called for {}, connected={}, client={}", sessionId, connected, client != null);
         if (client == null || !connected) {
             return CompletableFuture.failedFuture(
-                    new IllegalStateException("SDK not connected"));
+                    new IllegalStateException("SDK not connected (connected=" + connected + ", client=" + (client != null) + ")"));
         }
         // Detach existing attachment so we can re-attach with the new handler
         if (attachedSessions.containsKey(sessionId)) {
+            LOG.info("Session {} already attached, detaching first", sessionId);
             detachSession(sessionId);
         }
 
         var config = new ResumeSessionConfig()
                 .setOnPermissionRequest(PermissionHandler.APPROVE_ALL)
-                .setOnEvent(event -> eventHandler.accept(sessionId, event));
+                .setOnEvent(event -> {
+                    LOG.info("SDK event received for session {}: {}", sessionId, event.getClass().getSimpleName());
+                    eventHandler.accept(sessionId, event);
+                });
+        LOG.info("Calling client.resumeSession for {}", sessionId);
         return client.resumeSession(sessionId, config)
                 .thenAccept(session -> {
                     attachedSessions.put(sessionId, session);
-                    LOG.info("Attached to session {}", sessionId);
+                    LOG.info("Successfully attached to session {}, CopilotSession={}", sessionId, session);
                 });
     }
 
