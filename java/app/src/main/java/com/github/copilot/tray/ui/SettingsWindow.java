@@ -437,12 +437,12 @@ public class SettingsWindow {
     private void showSessionDetail(SessionSnapshot session) {
         detailGrid.getChildren().clear();
         int row = 0;
-        row = addDetailRow(row, "ID", session.id());
+        row = addDetailRow(row, "ID", session.id(), true);
         row = addDetailRow(row, "Name", session.name());
+        row = addDetailRow(row, "Directory", session.workingDirectory(), true);
         row = addDetailRow(row, "Model", session.model());
         row = addDetailRow(row, "Status", session.status().name());
         row = addDetailRow(row, "Location", session.remote() ? "Remote" : "Local");
-        row = addDetailRow(row, "Directory", session.workingDirectory());
         if (session.createdAt() != null)
             row = addDetailRow(row, "Created", DATE_FMT.format(session.createdAt()));
         if (session.lastActivityAt() != null)
@@ -497,6 +497,10 @@ public class SettingsWindow {
     }
 
     private int addDetailRow(int row, String label, String value) {
+        return addDetailRow(row, label, value, false);
+    }
+
+    private int addDetailRow(int row, String label, String value, boolean showCopy) {
         var keyLabel = new Label(label);
         keyLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #aaa;");
         keyLabel.setMinWidth(Region.USE_PREF_SIZE);
@@ -507,24 +511,28 @@ public class SettingsWindow {
         valueField.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; "
                 + "-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0;");
 
-        var copyIcon = createCopyIcon();
-        var copyBtn = new Button();
-        copyBtn.setGraphic(copyIcon);
-        copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;");
-        copyBtn.setTooltip(new Tooltip("Copy to clipboard"));
-        copyBtn.setOnAction(e -> {
-            var cb = javafx.scene.input.Clipboard.getSystemClipboard();
-            var content = new javafx.scene.input.ClipboardContent();
-            content.putString(value != null ? value : "");
-            cb.setContent(content);
-            copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand; -fx-opacity: 0.5;");
-            javafx.animation.PauseTransition flash = new javafx.animation.PauseTransition(javafx.util.Duration.millis(300));
-            flash.setOnFinished(ev -> copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;"));
-            flash.play();
-        });
-
-        var valueRow = new HBox(2, valueField, copyBtn);
-        valueRow.setAlignment(Pos.CENTER_LEFT);
+        javafx.scene.Node valueRow;
+        if (showCopy) {
+            var copyIcon = createCopyIcon();
+            var copyBtn = new Button();
+            copyBtn.setGraphic(copyIcon);
+            copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;");
+            copyBtn.setTooltip(new Tooltip("Copy to clipboard"));
+            copyBtn.setOnAction(e -> {
+                var cb = javafx.scene.input.Clipboard.getSystemClipboard();
+                var content = new javafx.scene.input.ClipboardContent();
+                content.putString(value != null ? value : "");
+                cb.setContent(content);
+                copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand; -fx-opacity: 0.5;");
+                javafx.animation.PauseTransition flash = new javafx.animation.PauseTransition(javafx.util.Duration.millis(300));
+                flash.setOnFinished(ev -> copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;"));
+                flash.play();
+            });
+            valueRow = new HBox(2, valueField, copyBtn);
+            ((HBox) valueRow).setAlignment(Pos.CENTER_LEFT);
+        } else {
+            valueRow = valueField;
+        }
 
         detailGrid.add(keyLabel, 0, row);
         detailGrid.add(valueRow, 1, row);
