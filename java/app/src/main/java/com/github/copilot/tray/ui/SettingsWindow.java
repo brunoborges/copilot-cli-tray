@@ -178,10 +178,11 @@ public class SettingsWindow {
             });
             return tableRow;
         });
-        sessionTable.getSelectionModel().selectedItemProperty()
-                .addListener((obs, old, nv) -> {
+        sessionTable.getSelectionModel().getSelectedItems()
+                .addListener((javafx.collections.ListChangeListener<SessionSnapshot>) change -> {
                     if (refreshing) return;
-                    var selected = sessionTable.getSelectionModel().getSelectedItems();
+                    var selected = sessionTable.getSelectionModel().getSelectedItems()
+                            .stream().filter(java.util.Objects::nonNull).toList();
                     if (selected.size() == 1) {
                         selectedSession = selected.getFirst();
                         showSessionDetail(selectedSession);
@@ -478,7 +479,7 @@ public class SettingsWindow {
         detailPane.getChildren().setAll(detailGrid);
     }
 
-    private void showMultiDetail(javafx.collections.ObservableList<SessionSnapshot> selected) {
+    private void showMultiDetail(java.util.List<SessionSnapshot> selected) {
         var label = new Label(selected.size() + " sessions selected");
         label.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
         detailPane.getChildren().setAll(label);
