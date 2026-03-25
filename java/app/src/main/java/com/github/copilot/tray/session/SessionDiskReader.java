@@ -18,9 +18,6 @@ public final class SessionDiskReader {
     private static final Path SESSION_STORE = Path.of(
             System.getProperty("user.home"), ".copilot", "session-state");
 
-    // Rough heuristic: 1 token ≈ 4 bytes of events.jsonl content
-    private static final double BYTES_PER_TOKEN = 4.0;
-    // Assumed context window size for token limit estimation
     private static final int DEFAULT_TOKEN_LIMIT = 200_000;
 
     private SessionDiskReader() {}
@@ -34,27 +31,44 @@ public final class SessionDiskReader {
             long fileSizeBytes,
             String workingDirectory,
             String firstUserMessage,
-            String model
+            String model,
+            int currentTokens,
+            int conversationTokens,
+            int systemTokens,
+            int toolDefinitionsTokens
     ) {
         public int totalMessages() { return userMessages + assistantMessages; }
 
-        /** Rough token estimate based on events.jsonl file size. */
-        public int estimatedTokens() {
-            return (int) (fileSizeBytes / BYTES_PER_TOKEN);
-        }
-
-        /** Build a UsageSnapshot from disk heuristics. */
+        /** Build a UsageSnapshot from real token data when available, heuristic fallback. */
         public UsageSnapshot toUsageSnapshot() {
-            int tokens = estimatedTokens();
-            int limit = Math.max(DEFAULT_TOKEN_LIMIT, tokens * 2);
+            if (currentTokens > 0) {
+                // Real token data from session events
+                int limit = DEFAULT_TOKEN_LIMIT;
+                int sysTools = systemTokens + toolDefinitionsTokens;
+                int msgs = conversationTokens;
+                int buffer = Math.max(0, limit - currentTokens);
+                return new UsageSnapshot(currentTokens, limit, userMessages + assistantMessages,
+                        sysTools, msgs, buffer);
+            }
+            if (conversationTokens > 0) {
+                // Partial data from compaction events
+                int total = conversationTokens + systemTokens + toolDefinitionsTokens;
+                int limit = DEFAULT_TOKEN_LIMIT;
+                int buffer = Math.max(0, limit - total);
+                return new UsageSnapshot(total, limit, userMessages + assistantMessages,
+                        systemTokens + toolDefinitionsTokens, conversationTokens, buffer);
+            }
+            // No real token data — use message-count heuristic (~800 tokens/message pair)
+            int estimatedTokens = (userMessages + assistantMessages) * 800;
+            int limit = DEFAULT_TOKEN_LIMIT;
             int buffer = (int) (limit * 0.20);
-            int systemTools = (int) (tokens * 0.30);
-            int messages = tokens - systemTools;
-            return new UsageSnapshot(tokens, limit, userMessages + assistantMessages,
-                    systemTools, messages, buffer);
+            int sysTools = (int) (estimatedTokens * 0.30);
+            int msgs = estimatedTokens - sysTools;
+            return new UsageSnapshot(estimatedTokens, limit, userMessages + assistantMessages,
+                    sysTools, msgs, buffer);
         }
 
-        public static final DiskStats EMPTY = new DiskStats(0, 0, 0, "", "", "");
+        public static final DiskStats EMPTY = new DiskStats(0, 0, 0, "", "", "", 0, 0, 0, 0);
     }
 
     /**
@@ -77,7 +91,7 @@ public final class SessionDiskReader {
         }
 
         if (!Files.exists(eventsFile)) {
-            return new DiskStats(0, 0, 0, workingDirectory, "", "");
+            return new DiskStats(0, 0, 0, workingDirectory, "", "", 0, 0, 0, 0);
         }
 
         long fileSize = 0;
@@ -91,6 +105,10 @@ public final class SessionDiskReader {
         int assistantMessages = 0;
         String firstUserMessage = "";
         String model = "";
+        int currentTokens = 0;
+        int conversationTokens = 0;
+        int systemTokens = 0;
+        int toolDefinitionsTokens = 0;
 
         try (var lines = Files.lines(eventsFile)) {
             for (var line : (Iterable<String>) lines::iterator) {
@@ -110,6 +128,24 @@ public final class SessionDiskReader {
                 } else if (line.contains("\"session.shutdown\"")) {
                     var m = extractJsonField(line, "currentModel");
                     if (!m.isEmpty()) model = m;
+                    int ct = extractIntField(line, "currentTokens");
+                    if (ct > 0) currentTokens = ct;
+                    int conv = extractIntField(line, "conversationTokens");
+                    if (conv > 0) conversationTokens = conv;
+                    int sys = extractIntField(line, "systemTokens");
+                    if (sys > 0) systemTokens = sys;
+                    int td = extractIntField(line, "toolDefinitionsTokens");
+                    if (td > 0) toolDefinitionsTokens = td;
+                } else if (line.contains("\"session.compaction_start\"")) {
+                    int conv = extractIntField(line, "conversationTokens");
+                    if (conv > 0) conversationTokens = conv;
+                    int sys = extractIntField(line, "systemTokens");
+                    if (sys > 0) systemTokens = sys;
+                    int td = extractIntField(line, "toolDefinitionsTokens");
+                    if (td > 0) toolDefinitionsTokens = td;
+                } else if (line.contains("\"session.compaction_complete\"")) {
+                    int pre = extractIntField(line, "preCompactionTokens");
+                    if (pre > 0 && currentTokens == 0) currentTokens = pre;
                 }
             }
         } catch (IOException e) {
@@ -117,7 +153,8 @@ public final class SessionDiskReader {
         }
 
         return new DiskStats(userMessages, assistantMessages, fileSize,
-                workingDirectory, firstUserMessage, model);
+                workingDirectory, firstUserMessage, model,
+                currentTokens, conversationTokens, systemTokens, toolDefinitionsTokens);
     }
 
     private static String readWorkspaceField(Path workspaceFile, String field) {
@@ -152,6 +189,24 @@ public final class SessionDiskReader {
         int end = jsonLine.indexOf('"', start);
         if (end < 0) return "";
         return jsonLine.substring(start, end);
+    }
+
+    /** Extract an integer field value from a JSON line. */
+    private static int extractIntField(String jsonLine, String field) {
+        var needle = "\"" + field + "\":";
+        int idx = jsonLine.indexOf(needle);
+        if (idx < 0) return 0;
+        int start = idx + needle.length();
+        // Skip whitespace
+        while (start < jsonLine.length() && jsonLine.charAt(start) == ' ') start++;
+        int end = start;
+        while (end < jsonLine.length() && Character.isDigit(jsonLine.charAt(end))) end++;
+        if (end == start) return 0;
+        try {
+            return Integer.parseInt(jsonLine.substring(start, end));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /**
