@@ -44,11 +44,9 @@ public class UsageDashboard extends VBox {
     // IDs selected before a refresh; used to restore selection afterwards
     private List<String> pendingRestoreIds = List.of();
 
-    // Donut chart data
+    // Donut chart data (used tokens breakdown only)
     private final ChartData systemToolsData;
     private final ChartData messagesData;
-    private final ChartData freeSpaceData;
-    private final ChartData bufferData;
 
     // Detail tiles
     private final Tile donutTile;
@@ -96,14 +94,12 @@ public class UsageDashboard extends VBox {
         // --- Tiles ---
         systemToolsData = new ChartData("System/Tools", 0, COLOR_SYSTEM);
         messagesData    = new ChartData("Messages", 0, COLOR_MSGS);
-        freeSpaceData   = new ChartData("Free Space", 0, COLOR_FREE);
-        bufferData      = new ChartData("Buffer", 0, COLOR_BUFFER);
 
         donutTile = TileBuilder.create()
                 .skinType(Tile.SkinType.DONUT_CHART)
                 .prefSize(TILE_W + 30, TILE_H + 30)
-                .title("Context Window")
-                .chartData(systemToolsData, messagesData, freeSpaceData, bufferData)
+                .title("Tokens Used")
+                .chartData(systemToolsData, messagesData)
                 .animated(false)
                 .build();
 
@@ -379,8 +375,6 @@ public class UsageDashboard extends VBox {
 
         systemToolsData.setValue(u.systemToolsTokens());
         messagesData.setValue(u.messagesTokens());
-        freeSpaceData.setValue(u.freeSpaceTokens());
-        bufferData.setValue(u.bufferTokens());
 
         contextGauge.setValue(u.tokenUsagePercent());
 
@@ -411,8 +405,6 @@ public class UsageDashboard extends VBox {
 
         systemToolsData.setValue(selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum());
         messagesData.setValue(selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum());
-        freeSpaceData.setValue(selected.stream().mapToInt(s -> s.usage().freeSpaceTokens()).sum());
-        bufferData.setValue(selected.stream().mapToInt(s -> s.usage().bufferTokens()).sum());
 
         contextGauge.setValue(avgPct);
 
@@ -425,21 +417,23 @@ public class UsageDashboard extends VBox {
         statusTile.setDescription(selected.size() + " sessions");
         statusTile.setText("");
 
+        int sysTokSum = selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum();
+        int msgTokSum = selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum();
+        int freeTokSum = selected.stream().mapToInt(s -> s.usage().freeSpaceTokens()).sum();
+        int bufTokSum = selected.stream().mapToInt(s -> s.usage().bufferTokens()).sum();
         systemToolsTile.setValue(0);
-        systemToolsTile.setDescription(formatTokens((int) systemToolsData.getValue()));
+        systemToolsTile.setDescription(formatTokens(sysTokSum));
         messagesTokTile.setValue(0);
-        messagesTokTile.setDescription(formatTokens((int) messagesData.getValue()));
+        messagesTokTile.setDescription(formatTokens(msgTokSum));
         freeSpaceTile.setValue(0);
-        freeSpaceTile.setDescription(formatTokens((int) freeSpaceData.getValue()));
+        freeSpaceTile.setDescription(formatTokens(freeTokSum));
         bufferTile.setValue(0);
-        bufferTile.setDescription(formatTokens((int) bufferData.getValue()));
+        bufferTile.setDescription(formatTokens(bufTokSum));
     }
 
     private void clearDetailTiles() {
         systemToolsData.setValue(0);
         messagesData.setValue(0);
-        freeSpaceData.setValue(0);
-        bufferData.setValue(0);
         contextGauge.setValue(0);
         tokenCountTile.setValue(0);
         tokenCountTile.setDescription("of 0");
