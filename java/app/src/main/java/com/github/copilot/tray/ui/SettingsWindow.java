@@ -334,13 +334,20 @@ public class SettingsWindow {
                 new SimpleStringProperty(String.valueOf(cd.getValue().usage().messagesCount())));
         msgsCol.setPrefWidth(50);
 
+        var ctxCol = new TableColumn<SessionSnapshot, String>("Context");
+        ctxCol.setCellValueFactory(cd -> {
+            var u = cd.getValue().usage();
+            return new SimpleStringProperty(formatTokens(u.currentTokens()) + " / " + formatTokens(u.tokenLimit()));
+        });
+        ctxCol.setPrefWidth(100);
+
         var createdCol = new TableColumn<SessionSnapshot, String>("Created");
         createdCol.setCellValueFactory(cd ->
                 new SimpleStringProperty(cd.getValue().createdAt() != null
                         ? DATE_FMT.format(cd.getValue().createdAt()) : ""));
         createdCol.setPrefWidth(130);
 
-        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, msgsCol, createdCol);
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, msgsCol, ctxCol, createdCol);
     }
 
     private void onDirectorySelected(String directory) {
@@ -643,6 +650,12 @@ public class SettingsWindow {
             case ARCHIVED -> "#888888";
             case CORRUPTED -> "#cc44cc";
         };
+    }
+
+    private static String formatTokens(int n) {
+        if (n >= 1_000_000) return String.format("%.1fM", n / 1_000_000.0);
+        if (n >= 1_000) return String.format("%.1fk", n / 1_000.0);
+        return String.valueOf(n);
     }
 
     // =====================================================================
