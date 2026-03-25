@@ -531,21 +531,22 @@ public class SettingsWindow {
         return row + 1;
     }
 
-    /** Small copy icon using JavaFX shapes (two overlapping rectangles). */
+    private static final String COPY_ICON_BACK = "M5.5 1H11a1.5 1.5 0 0 1 1.5 1.5V8A1.5 1.5 0 0 1 11 9.5H5.5A1.5 1.5 0 0 1 4 8V2.5A1.5 1.5 0 0 1 5.5 1z";
+    private static final String COPY_ICON_FRONT = "M2.5 4H8A1.5 1.5 0 0 1 9.5 5.5V11A1.5 1.5 0 0 1 8 12.5H2.5A1.5 1.5 0 0 1 1 11V5.5A1.5 1.5 0 0 1 2.5 4z";
+
+    /** Copy icon rendered from SVG path data (matches icons/copy.svg). */
     private static javafx.scene.Group createCopyIcon() {
-        var back = new javafx.scene.shape.Rectangle(3, 0, 8, 9);
+        var back = new javafx.scene.shape.SVGPath();
+        back.setContent(COPY_ICON_BACK);
         back.setFill(Color.TRANSPARENT);
         back.setStroke(Color.gray(0.6));
         back.setStrokeWidth(1.2);
-        back.setArcWidth(1.5);
-        back.setArcHeight(1.5);
 
-        var front = new javafx.scene.shape.Rectangle(0, 3, 8, 9);
+        var front = new javafx.scene.shape.SVGPath();
+        front.setContent(COPY_ICON_FRONT);
         front.setFill(Color.TRANSPARENT);
         front.setStroke(Color.gray(0.6));
         front.setStrokeWidth(1.2);
-        front.setArcWidth(1.5);
-        front.setArcHeight(1.5);
 
         return new javafx.scene.Group(back, front);
     }
