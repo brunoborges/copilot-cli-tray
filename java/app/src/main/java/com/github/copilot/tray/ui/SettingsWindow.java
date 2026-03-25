@@ -157,6 +157,7 @@ public class SettingsWindow {
                 .addListener((obs, old, nv) -> {
                     if (refreshing) return;
                     selectedDirectory = nv;
+                    clearDetailPane();
                     onDirectorySelected(nv);
                 });
 
