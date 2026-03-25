@@ -68,6 +68,8 @@ public class UsageDashboard extends VBox {
     private final Tile activeSessionsTile;
     private final Tile totalTokensTile;
 
+    // Guard to suppress selection listener during programmatic table population
+    private boolean populatingTable;
     private boolean refreshing;
     private List<SessionSnapshot> allSessions = List.of();
 
@@ -86,7 +88,6 @@ public class UsageDashboard extends VBox {
                     if (refreshing) return;
                     selectedDirectoryPath = nv != null ? stripBadge(nv) : null;
                     populateSessionTable();
-                    syncTilesToCurrentState();
                 });
 
         // --- Session table (right, top) ---
@@ -243,8 +244,8 @@ public class UsageDashboard extends VBox {
 
         sessionTable.getSelectionModel().getSelectedItems()
                 .addListener((javafx.collections.ListChangeListener<SessionSnapshot>) change -> {
-                    if (refreshing) return;
-                    onSessionSelectionChanged();
+                    if (refreshing || populatingTable) return;
+                    syncTilesToCurrentState();
                 });
     }
 
@@ -325,44 +326,52 @@ public class UsageDashboard extends VBox {
     }
 
     private void populateSessionTable() {
-        if (selectedDirectoryPath == null) {
-            sessionTable.setItems(FXCollections.emptyObservableList());
-            return;
+        populatingTable = true;
+        try {
+            if (selectedDirectoryPath == null) {
+                sessionTable.setItems(FXCollections.emptyObservableList());
+            } else {
+                var sessions = allSessions.stream()
+                        .filter(s -> selectedDirectoryPath.equals(s.workingDirectory()))
+                        .sorted(Comparator.comparing(SessionSnapshot::lastActivityAt,
+                                Comparator.nullsFirst(Comparator.reverseOrder())))
+                        .toList();
+                sessionTable.setItems(FXCollections.observableArrayList(sessions));
+            }
+        } finally {
+            populatingTable = false;
         }
-        var sessions = allSessions.stream()
-                .filter(s -> selectedDirectoryPath.equals(s.workingDirectory()))
-                .sorted(Comparator.comparing(SessionSnapshot::lastActivityAt,
-                        Comparator.nullsFirst(Comparator.reverseOrder())))
-                .toList();
-        sessionTable.setItems(FXCollections.observableArrayList(sessions));
+        syncTilesToCurrentState();
     }
 
     /**
      * Single source of truth for updating all tiles based on current state.
-     * Called after any user interaction or refresh completes.
+     * Computes directory sessions from allSessions (authoritative source),
+     * not from sessionTable.getItems() which may be in a transient state.
      */
     private void syncTilesToCurrentState() {
-        // Aggregate tiles always reflect the full directory
-        var dirSessions = sessionTable.getItems();
+        // Aggregate tiles: all sessions for the selected directory
+        List<SessionSnapshot> dirSessions;
+        if (selectedDirectoryPath == null) {
+            dirSessions = List.of();
+        } else {
+            dirSessions = allSessions.stream()
+                    .filter(s -> selectedDirectoryPath.equals(s.workingDirectory()))
+                    .toList();
+        }
         updateAggregateTiles(dirSessions);
 
-        // Detail tiles reflect session selection
-        var selected = sessionTable.getSelectionModel().getSelectedItems();
-        if (selected.size() == 1 && selected.getFirst() != null) {
+        // Detail tiles: based on table selection (filter nulls — JavaFX quirk)
+        var selected = sessionTable.getSelectionModel().getSelectedItems().stream()
+                .filter(Objects::nonNull)
+                .toList();
+        if (selected.size() == 1) {
             updateDetailTiles(selected.getFirst());
         } else if (selected.size() > 1) {
-            updateAggregateDetailTiles(List.copyOf(selected));
+            updateAggregateDetailTiles(selected);
         } else {
             clearDetailTiles();
         }
-    }
-
-    /**
-     * Called by the ListChangeListener on the selected items list.
-     * Safe to call from user interaction only (guarded by refreshing flag).
-     */
-    private void onSessionSelectionChanged() {
-        syncTilesToCurrentState();
     }
 
     private void updateDetailTiles(SessionSnapshot session) {
