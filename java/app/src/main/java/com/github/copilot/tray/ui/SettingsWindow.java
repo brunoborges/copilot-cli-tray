@@ -49,7 +49,7 @@ public class SettingsWindow {
     private ToggleGroup locationToggle;
     private ListView<String> directoryList;
     private TableView<SessionSnapshot> sessionTable;
-    private Label detailLabel;
+    private TextArea detailLabel;
     private HBox actionBar;
     private Button resumeBtn, renameBtn, deleteBtn;
     private SessionSnapshot selectedSession;
@@ -185,10 +185,11 @@ public class SettingsWindow {
                 });
 
         // --- Right bottom: detail + actions ---
-        detailLabel = new Label("Select a session to view details.");
+        detailLabel = new TextArea("Select a session to view details.");
+        detailLabel.setEditable(false);
         detailLabel.setWrapText(true);
         detailLabel.setPadding(new Insets(10));
-        detailLabel.setStyle("-fx-font-family: monospace; -fx-font-size: 12px;");
+        detailLabel.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; -fx-control-inner-background: transparent;");
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -255,12 +256,9 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        var detailScroll = new ScrollPane(detailLabel);
-        detailScroll.setFitToWidth(true);
-        detailScroll.setFitToHeight(true);
-        detailScroll.setPrefHeight(200);
+        detailLabel.setPrefHeight(200);
 
-        var rightPane = new VBox(sessionTable, new Separator(), detailScroll, actionPane);
+        var rightPane = new VBox(sessionTable, new Separator(), detailLabel, actionPane);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
         var split = new SplitPane(leftBox, rightPane);
