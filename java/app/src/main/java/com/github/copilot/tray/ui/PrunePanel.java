@@ -44,6 +44,7 @@ public class PrunePanel extends VBox {
     private final Button selectEmptyBtn = new Button("Select Empty");
     private final Button selectAbandonedBtn = new Button("Select Abandoned");
     private final Button selectTrivialBtn = new Button("Select Trivial");
+    private final Button selectCorruptedBtn = new Button("Select Corrupted");
     private final Button selectAllBtn = new Button("Select All");
     private final Button infoBtn = new Button("ℹ Categories");
 
@@ -94,6 +95,7 @@ public class PrunePanel extends VBox {
         selectEmptyBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.EMPTY, true); });
         selectAbandonedBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.ABANDONED, true); });
         selectTrivialBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.TRIVIAL, true); });
+        selectCorruptedBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.CORRUPTED, true); });
 
         // View toggle
         var toggleGroup = new ToggleGroup();
@@ -104,7 +106,7 @@ public class PrunePanel extends VBox {
 
         var selectionRow = new HBox(8, deselectAllBtn, selectAllBtn,
                 new Separator(javafx.geometry.Orientation.VERTICAL),
-                selectEmptyBtn, selectAbandonedBtn, selectTrivialBtn,
+                selectEmptyBtn, selectAbandonedBtn, selectTrivialBtn, selectCorruptedBtn,
                 new Separator(javafx.geometry.Orientation.VERTICAL),
                 flatViewBtn, treeViewBtn);
         selectionRow.setAlignment(Pos.CENTER_LEFT);
@@ -178,6 +180,7 @@ public class PrunePanel extends VBox {
                         case EMPTY -> "-fx-text-fill: #ff6666; -fx-font-weight: bold;";
                         case ABANDONED -> "-fx-text-fill: #ffaa44; -fx-font-weight: bold;";
                         case TRIVIAL -> "-fx-text-fill: #aaaaaa;";
+                        case CORRUPTED -> "-fx-text-fill: #cc44cc; -fx-font-weight: bold;";
                     });
                 }
             }
@@ -332,6 +335,7 @@ public class PrunePanel extends VBox {
                         case EMPTY -> "-fx-text-fill: #ff6666; -fx-font-weight: bold;";
                         case ABANDONED -> "-fx-text-fill: #ffaa44; -fx-font-weight: bold;";
                         case TRIVIAL -> "-fx-text-fill: #aaaaaa;";
+                        case CORRUPTED -> "-fx-text-fill: #cc44cc; -fx-font-weight: bold;";
                     });
                 }
             }
@@ -532,6 +536,7 @@ public class PrunePanel extends VBox {
         selectEmptyBtn.setDisable(disabled);
         selectAbandonedBtn.setDisable(disabled);
         selectTrivialBtn.setDisable(disabled);
+        selectCorruptedBtn.setDisable(disabled);
     }
 
     private void updatePruneButton() {
@@ -577,10 +582,16 @@ public class PrunePanel extends VBox {
                                 .filter(c -> c.category() == PruneCategory.ABANDONED).count();
                         long trivialCount = candidates.stream()
                                 .filter(c -> c.category() == PruneCategory.TRIVIAL).count();
+                        long corruptedCount = candidates.stream()
+                                .filter(c -> c.category() == PruneCategory.CORRUPTED).count();
 
-                        summaryLabel.setText("Found %d sessions — %s total  |  %d empty, %d abandoned, %d trivial"
+                        var summary = "Found %d sessions — %s total  |  %d empty, %d abandoned, %d trivial"
                                 .formatted(candidates.size(), formatSize(totalSize),
-                                        emptyCount, abandonedCount, trivialCount));
+                                        emptyCount, abandonedCount, trivialCount);
+                        if (corruptedCount > 0) {
+                            summary += ", %d corrupted".formatted(corruptedCount);
+                        }
+                        summaryLabel.setText(summary);
                         statusLabel.setText("Use the selection buttons to pick sessions, then delete.");
                         setSelectionControlsDisabled(false);
                     }
@@ -684,6 +695,12 @@ public class PrunePanel extends VBox {
                 These are very short exchanges that typically hold little value \
                 for future reference. This category is optional and can be \
                 excluded using the checkbox.
+
+                CORRUPTED (purple)
+                Sessions with unreadable, malformed, or incompatible data. \
+                These cannot be resumed and are safe to delete. This includes \
+                sessions with invalid JSON in events.jsonl or corrupted \
+                workspace.yaml files.
 
                 Sessions with more than 5 user messages and at least one \
                 assistant response are considered valuable and never flagged.""");

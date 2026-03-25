@@ -137,10 +137,13 @@ public class TrayManager {
      */
     private Menu buildSessionGroup(String label, java.util.List<SessionSnapshot> sessions) {
         var active = sessions.stream()
-                .filter(s -> s.status() != SessionStatus.ARCHIVED)
+                .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
                 .toList();
         var archived = sessions.stream()
                 .filter(s -> s.status() == SessionStatus.ARCHIVED)
+                .toList();
+        var corrupted = sessions.stream()
+                .filter(s -> s.status() == SessionStatus.CORRUPTED)
                 .toList();
 
         var groupMenu = new Menu(label + " (" + sessions.size() + ")");
@@ -189,6 +192,26 @@ public class TrayManager {
             }
         }
         groupMenu.add(archivedMenu);
+
+        // Corrupted sub-section
+        if (!corrupted.isEmpty()) {
+            var corruptedMenu = new Menu("Corrupted (" + corrupted.size() + ")");
+            var shown = corrupted.stream().limit(TRAY_GROUP_LIMIT).toList();
+            for (var session : shown) {
+                var item = new Menu(session.name());
+                item.add(disabledItem("⚠ Corrupted / incompatible"));
+                item.add(actionItem("Delete", e ->
+                        sdkBridge.deleteSession(session.id())
+                                .thenRun(() -> sessionManager.removeSession(session.id()))));
+                corruptedMenu.add(item);
+            }
+            if (corrupted.size() > TRAY_GROUP_LIMIT) {
+                corruptedMenu.addSeparator();
+                corruptedMenu.add(actionItem("View All " + corrupted.size() + " Sessions...",
+                        e -> onShowSessions.run()));
+            }
+            groupMenu.add(corruptedMenu);
+        }
 
         return groupMenu;
     }

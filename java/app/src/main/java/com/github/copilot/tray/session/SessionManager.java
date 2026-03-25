@@ -144,6 +144,15 @@ public class SessionManager {
         notifyListeners();
     }
 
+    /**
+     * Mark a session as corrupted (unresumable, incompatible data).
+     */
+    public void markCorrupted(String id) {
+        sessions.computeIfPresent(id, (k, s) -> s.withStatus(SessionStatus.CORRUPTED));
+        LOG.warn("Session marked as corrupted: {}", id);
+        notifyListeners();
+    }
+
     private void notifyListeners() {
         var snapshot = getSessions();
         for (var listener : changeListeners) {

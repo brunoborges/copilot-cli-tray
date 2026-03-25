@@ -187,6 +187,7 @@ public class UsageDashboard extends VBox {
                         case IDLE -> "#44cc44";
                         case ERROR -> "#ff4444";
                         case ARCHIVED -> "#888888";
+                        case CORRUPTED -> "#cc44cc";
                     };
                     setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
                 }
@@ -354,6 +355,7 @@ public class UsageDashboard extends VBox {
             case ACTIVE -> Tile.TileColor.BLUE.color;
             case ERROR -> Tile.TileColor.RED.color;
             case ARCHIVED -> Color.GRAY;
+            case CORRUPTED -> Color.web("#cc44cc");
         };
     }
 

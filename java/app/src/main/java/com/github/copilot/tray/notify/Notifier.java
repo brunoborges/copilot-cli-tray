@@ -56,11 +56,16 @@ public class Notifier {
                 notify("Session Error",
                         "❌ Session '" + session.name() + "' encountered an error",
                         TrayIcon.MessageType.ERROR);
+            } else if (current == SessionStatus.CORRUPTED && previous != SessionStatus.CORRUPTED) {
+                notify("Session Corrupted",
+                        "⚠️ Session '" + session.name() + "' is corrupted or incompatible",
+                        TrayIcon.MessageType.WARNING);
             }
 
             // Context window warning
             if (session.usage().tokenUsagePercent() >= getWarningThreshold()
-                    && session.status() != SessionStatus.ARCHIVED) {
+                    && session.status() != SessionStatus.ARCHIVED
+                    && session.status() != SessionStatus.CORRUPTED) {
                 notify("Context Warning",
                         "⚠️ Session '" + session.name() + "' context is "
                                 + (int) session.usage().tokenUsagePercent() + "% full",

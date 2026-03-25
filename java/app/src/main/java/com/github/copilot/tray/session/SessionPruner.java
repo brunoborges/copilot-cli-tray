@@ -41,7 +41,8 @@ public class SessionPruner {
     public enum PruneCategory {
         EMPTY("Empty — no events or user messages"),
         ABANDONED("Abandoned — user message but no assistant response"),
-        TRIVIAL("Trivial — ≤" + TRIVIAL_MESSAGE_THRESHOLD + " user messages");
+        TRIVIAL("Trivial — ≤" + TRIVIAL_MESSAGE_THRESHOLD + " user messages"),
+        CORRUPTED("Corrupted — unreadable or incompatible session data");
 
         private final String description;
 
@@ -122,7 +123,13 @@ public class SessionPruner {
                     var candidate = analyzeSession(sessionDir, includeTrivial);
                     candidate.ifPresent(candidates::add);
                 } catch (Exception e) {
-                    LOG.debug("Error analyzing session dir {}: {}", sessionDir, e.getMessage());
+                    // Sessions that throw during analysis are corrupted
+                    LOG.debug("Corrupted session dir {}: {}", sessionDir, e.getMessage());
+                    var sessionId = sessionDir.getFileName().toString();
+                    candidates.add(new PruneCandidate(
+                            sessionId, PruneCategory.CORRUPTED, directorySize(sessionDir),
+                            Instant.EPOCH, Instant.EPOCH, "(analysis failed: " + e.getMessage() + ")",
+                            "", 0, 0));
                 }
             });
         } catch (IOException e) {
@@ -179,12 +186,20 @@ public class SessionPruner {
         Instant updatedAt = Instant.EPOCH;
         String workingDirectory = "";
         if (Files.exists(workspaceFile)) {
-            var meta = parseWorkspaceYaml(workspaceFile);
-            createdAt = meta.getOrDefault("created_at", "").isEmpty()
-                    ? Instant.EPOCH : parseInstant(meta.get("created_at"));
-            updatedAt = meta.getOrDefault("updated_at", "").isEmpty()
-                    ? createdAt : parseInstant(meta.get("updated_at"));
-            workingDirectory = meta.getOrDefault("cwd", "");
+            try {
+                var meta = parseWorkspaceYaml(workspaceFile);
+                createdAt = meta.getOrDefault("created_at", "").isEmpty()
+                        ? Instant.EPOCH : parseInstant(meta.get("created_at"));
+                updatedAt = meta.getOrDefault("updated_at", "").isEmpty()
+                        ? createdAt : parseInstant(meta.get("updated_at"));
+                workingDirectory = meta.getOrDefault("cwd", "");
+            } catch (Exception e) {
+                LOG.debug("Corrupted workspace.yaml in {}: {}", sessionId, e.getMessage());
+                long diskSize = directorySize(sessionDir);
+                return Optional.of(new PruneCandidate(
+                        sessionId, PruneCategory.CORRUPTED, diskSize,
+                        createdAt, updatedAt, "(corrupted workspace.yaml)", workingDirectory, 0, 0));
+            }
         }
 
         long diskSize = directorySize(sessionDir);
@@ -200,20 +215,37 @@ public class SessionPruner {
         int userMessages = 0;
         int assistantMessages = 0;
         String firstUserMessage = "";
+        boolean corrupted = false;
 
         try (var lines = Files.lines(eventsFile)) {
             for (var line : (Iterable<String>) lines::iterator) {
-                if (line.contains("\"user.message\"")) {
+                var trimmed = line.trim();
+                // Detect corrupted lines: non-empty lines that aren't valid JSON objects
+                if (!trimmed.isEmpty() && !trimmed.startsWith("{")) {
+                    corrupted = true;
+                    break;
+                }
+                if (trimmed.contains("\"user.message\"")) {
                     userMessages++;
                     if (userMessages == 1) {
-                        firstUserMessage = extractUserMessage(line);
+                        firstUserMessage = extractUserMessage(trimmed);
                     }
-                } else if (line.contains("\"assistant.message\"")) {
+                } else if (trimmed.contains("\"assistant.message\"")) {
                     assistantMessages++;
                 }
             }
-        } catch (IOException e) {
-            LOG.debug("Error reading events for {}: {}", sessionId, e.getMessage());
+        } catch (Exception e) {
+            LOG.debug("Corrupted events.jsonl in {}: {}", sessionId, e.getMessage());
+            return Optional.of(new PruneCandidate(
+                    sessionId, PruneCategory.CORRUPTED, diskSize,
+                    createdAt, updatedAt, "(unreadable events.jsonl)", workingDirectory, 0, 0));
+        }
+
+        if (corrupted) {
+            return Optional.of(new PruneCandidate(
+                    sessionId, PruneCategory.CORRUPTED, diskSize,
+                    createdAt, updatedAt, "(malformed events.jsonl)", workingDirectory,
+                    userMessages, assistantMessages));
         }
 
         // Category: EMPTY — events file exists but zero user messages

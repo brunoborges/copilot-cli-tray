@@ -8,5 +8,6 @@ public enum SessionStatus {
     IDLE,
     BUSY,
     ARCHIVED,
-    ERROR
+    ERROR,
+    CORRUPTED
 }

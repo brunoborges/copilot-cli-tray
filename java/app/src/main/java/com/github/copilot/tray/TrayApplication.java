@@ -93,8 +93,14 @@ public class TrayApplication {
 
                     // Only attach for detailed events if session is active (within 12h)
                     var session = sessionManager.getSession(id);
-                    if (session != null && session.status() != com.github.copilot.tray.session.SessionStatus.ARCHIVED) {
-                        sdkBridge.attachSession(id, eventRouter);
+                    if (session != null && session.status() != com.github.copilot.tray.session.SessionStatus.ARCHIVED
+                            && session.status() != com.github.copilot.tray.session.SessionStatus.CORRUPTED) {
+                        try {
+                            sdkBridge.attachSession(id, eventRouter);
+                        } catch (Exception e) {
+                            LOG.warn("Failed to attach session {} — marking as corrupted: {}", id, e.getMessage());
+                            sessionManager.markCorrupted(id);
+                        }
                     }
                 }
             }

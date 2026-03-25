@@ -337,9 +337,11 @@ public class SettingsWindow {
 
     private TreeItem<String> buildGroupNode(String label, java.util.List<SessionSnapshot> sessions) {
         var active = sessions.stream()
-                .filter(s -> s.status() != SessionStatus.ARCHIVED).toList();
+                .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED).toList();
         var archived = sessions.stream()
                 .filter(s -> s.status() == SessionStatus.ARCHIVED).toList();
+        var corrupted = sessions.stream()
+                .filter(s -> s.status() == SessionStatus.CORRUPTED).toList();
 
         var group = new TreeItem<>(label + " (" + sessions.size() + ")");
         // Expansion state is restored by restoreTreeExpansionState()
@@ -355,6 +357,14 @@ public class SettingsWindow {
             archivedNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
         }
         group.getChildren().add(archivedNode);
+
+        if (!corrupted.isEmpty()) {
+            var corruptedNode = new TreeItem<>("Corrupted (" + corrupted.size() + ")");
+            for (var s : corrupted) {
+                corruptedNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
+            }
+            group.getChildren().add(corruptedNode);
+        }
 
         return group;
     }
