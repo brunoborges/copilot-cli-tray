@@ -13,6 +13,8 @@ public class Main extends Application {
     private TrayApplication trayApp;
 
     public static void main(String[] args) {
+        // Set macOS dock name (must be set before AWT/JavaFX initializes)
+        System.setProperty("apple.awt.application.name", "Copilot Agentic Tray");
         launch(args);
     }
 

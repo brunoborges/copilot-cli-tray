@@ -89,6 +89,9 @@
         <version>${javafx.maven.plugin.version}</version>
         <configuration>
           <mainClass>com.github.copilot.tray/com.github.copilot.tray.Main</mainClass>
+          <options>
+            <option>-Xdock:name=Copilot Agentic Tray</option>
+          </options>
         </configuration>
       </plugin>
 
