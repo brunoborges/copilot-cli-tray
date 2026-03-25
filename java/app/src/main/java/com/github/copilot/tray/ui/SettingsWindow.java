@@ -24,12 +24,16 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * JavaFX settings window launched from the system tray.
  * Directory-first layout: sessions are organized by working directory.
  */
 public class SettingsWindow {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SettingsWindow.class);
     private static final DateTimeFormatter DATE_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
@@ -228,7 +232,11 @@ public class SettingsWindow {
                             Thread.ofVirtual().start(() -> {
                                 for (int i = 0; i < total; i++) {
                                     var s = selected.get(i);
-                                    deleteHandler.accept(s.id());
+                                    try {
+                                        deleteHandler.accept(s.id());
+                                    } catch (Exception ex) {
+                                        LOG.warn("Failed to delete session {}: {}", s.id(), ex.getMessage());
+                                    }
                                     final double progress = (i + 1.0) / total;
                                     Platform.runLater(() -> deleteProgress.setProgress(progress));
                                 }
