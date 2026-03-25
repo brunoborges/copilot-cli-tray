@@ -294,7 +294,6 @@ public class SettingsWindow {
                 .sorted(Comparator.comparing(SessionSnapshot::lastActivityAt).reversed())
                 .toList();
         sessionTable.setItems(FXCollections.observableArrayList(sessions));
-        if (!sessions.isEmpty()) sessionTable.getSelectionModel().selectFirst();
     }
 
     // =====================================================================
