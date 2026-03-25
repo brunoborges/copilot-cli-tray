@@ -19,7 +19,7 @@ public class TerminalLauncher {
      * in the session's original working directory.
      */
     public void resumeSession(String sessionId, String workingDirectory) {
-        var command = buildCommand("copilot --resume " + sessionId, workingDirectory);
+        var command = buildCommand("copilot --resume " + sessionId + " --banner", workingDirectory);
         LOG.info("Launching terminal for session {} in {}: {}", sessionId, workingDirectory, command);
         launch(command, workingDirectory);
     }
@@ -28,7 +28,7 @@ public class TerminalLauncher {
      * Open a new terminal window running a fresh {@code copilot} session.
      */
     public void newSession() {
-        var command = buildCommand("copilot", null);
+        var command = buildCommand("copilot --banner", null);
         LOG.info("Launching new terminal session: {}", command);
         launch(command, null);
     }
