@@ -104,7 +104,7 @@ public class UsageDashboard extends VBox {
                 .prefSize(TILE_W + 30, TILE_H + 30)
                 .title("Context Window")
                 .chartData(systemToolsData, messagesData, freeSpaceData, bufferData)
-                .animated(true)
+                .animated(false)
                 .build();
 
         contextGauge = TileBuilder.create()
@@ -116,7 +116,7 @@ public class UsageDashboard extends VBox {
                 .thresholdVisible(false).threshold(80)
                 .barColor(COLOR_SYSTEM)
                 .thresholdColor(Tile.TileColor.RED.color)
-                .animated(true)
+                .animated(false)
                 .build();
 
         tokenCountTile = TileBuilder.create()
@@ -124,7 +124,7 @@ public class UsageDashboard extends VBox {
                 .prefSize(TILE_W, TILE_H)
                 .title("Tokens Used")
                 .description("of 0")
-                .value(0).decimals(0).animated(true)
+                .value(0).decimals(0).animated(false)
                 .build();
 
         modelTile = TileBuilder.create()
@@ -469,7 +469,7 @@ public class UsageDashboard extends VBox {
                 .title(title).unit("%")
                 .maxValue(100).value(0)
                 .barColor(color)
-                .animated(true).build();
+                .animated(false).build();
     }
 
     private Tile buildAggregateTile(String title) {
@@ -477,7 +477,7 @@ public class UsageDashboard extends VBox {
                 .skinType(Tile.SkinType.NUMBER)
                 .prefSize(TILE_W, SMALL_H)
                 .title(title).value(0).decimals(0)
-                .animated(true).build();
+                .animated(false).build();
     }
 
     private static Color statusColor(SessionStatus status) {
