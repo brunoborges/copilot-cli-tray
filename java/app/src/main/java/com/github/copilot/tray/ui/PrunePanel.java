@@ -138,9 +138,9 @@ public class PrunePanel extends VBox {
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
         selectCol.setCellValueFactory(cd -> getSelectionProperty(cd.getValue().sessionId()));
         selectCol.setCellFactory(col -> new CheckBoxCell());
-        selectCol.setPrefWidth(40);
-        selectCol.setMinWidth(40);
-        selectCol.setMaxWidth(40);
+        selectCol.setPrefWidth(50);
+        selectCol.setMinWidth(50);
+        selectCol.setMaxWidth(50);
         selectCol.setSortable(false);
 
         // Session ID
@@ -274,9 +274,9 @@ public class PrunePanel extends VBox {
             return new SimpleStringProperty(null);
         });
         selectCol.setCellFactory(col -> new TreeCheckBoxCell());
-        selectCol.setPrefWidth(40);
-        selectCol.setMinWidth(40);
-        selectCol.setMaxWidth(40);
+        selectCol.setPrefWidth(50);
+        selectCol.setMinWidth(50);
+        selectCol.setMaxWidth(50);
         selectCol.setSortable(false);
 
         // Name / Directory (tree disclosure column)
