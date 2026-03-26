@@ -30,9 +30,10 @@ public class SessionEventLogWindow {
      * @param sessionName  display name of the session
      * @param onClose      called when the window is closed (should detach the session)
      * @param themeManager optional theme manager for stylesheet (may be null)
+     * @param owner        optional owner stage for multi-monitor positioning (may be null)
      */
     public SessionEventLogWindow(String sessionId, String sessionName, Runnable onClose,
-                                  ThemeManager themeManager) {
+                                  ThemeManager themeManager, Stage owner) {
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setWrapText(true);
@@ -47,6 +48,7 @@ public class SessionEventLogWindow {
         VBox.setVgrow(logArea, Priority.ALWAYS);
 
         stage = new Stage();
+        if (owner != null) stage.initOwner(owner);
         stage.setTitle("Event Log — " + sessionName);
         stage.getIcons().add(new javafx.scene.image.Image(
                 getClass().getResourceAsStream("/icons/tray-idle.png")));

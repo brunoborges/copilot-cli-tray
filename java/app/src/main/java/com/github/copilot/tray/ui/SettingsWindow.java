@@ -267,7 +267,7 @@ public class SettingsWindow {
             var session = selectedSession;
             var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {
                 sdkBridge.detachSession(session.id());
-            }, themeManager);
+            }, themeManager, stage);
             logWindow.show();
             sdkBridge.attachSession(session.id(), (sid, event) -> logWindow.onEvent(sid, event))
                     .thenRun(() -> Platform.runLater(() -> logWindow.appendLog("Attached — listening for events")))
@@ -284,6 +284,7 @@ public class SettingsWindow {
             dialog.setTitle("Rename Session");
             dialog.setHeaderText(null);
             dialog.setContentText("New name:");
+            dialog.initOwner(stage);
             dialog.showAndWait().ifPresent(newName -> {
                 if (!newName.isBlank()) {
                     sessionManager.updateName(selectedSession.id(), newName.trim());
@@ -305,8 +306,9 @@ public class SettingsWindow {
             var msg = selected.size() == 1
                     ? "Delete session '" + selected.getFirst().name() + "'?"
                     : "Delete " + selected.size() + " selected sessions?";
-            new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.YES, ButtonType.NO)
-                    .showAndWait().ifPresent(bt -> {
+            var alert = new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.YES, ButtonType.NO);
+            alert.initOwner(stage);
+            alert.showAndWait().ifPresent(bt -> {
                         if (bt == ButtonType.YES) {
                             actionBar.setDisable(true);
                             deleteProgress.setProgress(0);
@@ -375,10 +377,11 @@ public class SettingsWindow {
             dialog.setTitle("View Logs");
             dialog.setHeaderText("How would you like to view logs?");
             dialog.setContentText("Mode:");
+            dialog.initOwner(stage);
             themeManager.register(dialog.getDialogPane().getScene());
 
             dialog.showAndWait().ifPresent(choice -> {
-                var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager);
+                var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager, stage);
                 logWindow.show();
                 if ("Follow in Real Time".equals(choice)) {
                     try {
