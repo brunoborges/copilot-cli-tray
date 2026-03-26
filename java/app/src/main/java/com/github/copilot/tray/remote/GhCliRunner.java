@@ -107,7 +107,7 @@ public class GhCliRunner {
      * Returns the Process so it can be destroyed to stop following.
      */
     public Process followTaskLogs(String sessionId, Consumer<String> lineConsumer) throws IOException {
-        var pb = new ProcessBuilder(ghPath, "agent-task", "view", sessionId, "--follow")
+        var pb = new ProcessBuilder(ghPath, "agent-task", "view", sessionId, "--log", "--follow")
                 .redirectErrorStream(true);
         var process = pb.start();
         Thread.ofVirtual().start(() -> {
