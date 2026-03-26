@@ -317,10 +317,6 @@ public class SettingsWindow {
                         }
                     });
         });
-        var heightLabel = new Label("h: --");
-        heightLabel.getStyleClass().add("debug-label");
-        bottomPaneSplit.heightProperty().addListener((_, _, h) ->
-                heightLabel.setText("h: %.0f".formatted(h.doubleValue())));
 
         // Remote-specific action buttons
         viewLogsBtn = new Button("View Logs");
@@ -367,7 +363,7 @@ public class SettingsWindow {
         });
 
         actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn,
-                viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn, heightLabel);
+                viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn);
         actionBar.setPadding(new Insets(6));
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
