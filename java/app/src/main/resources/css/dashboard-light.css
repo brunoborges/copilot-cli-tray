@@ -502,6 +502,13 @@
     -fx-text-fill: #717171;
 }
 
+.tile-title-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #717171;
+    -fx-alignment: center;
+}
+
 /* --- Detail pane --- */
 
 .detail-header {

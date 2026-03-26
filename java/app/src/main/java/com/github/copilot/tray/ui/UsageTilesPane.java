@@ -61,8 +61,7 @@ public class UsageTilesPane extends VBox {
 
         donutTile = TileBuilder.create()
                 .skinType(Tile.SkinType.DONUT_CHART)
-                .prefSize(TILE_W + 30, TILE_H + 30)
-                .title("Tokens Used")
+                .prefSize(TILE_W, TILE_H)
                 .chartData(systemToolsData, messagesData)
                 .animated(false)
                 .textSize(Tile.TextSize.SMALLER)
@@ -71,7 +70,6 @@ public class UsageTilesPane extends VBox {
         contextGauge = TileBuilder.create()
                 .skinType(Tile.SkinType.GAUGE)
                 .prefSize(TILE_W, TILE_H)
-                .title("Context Used")
                 .unit("%")
                 .minValue(0).maxValue(100).value(0)
                 .thresholdVisible(false).threshold(80)
@@ -84,7 +82,6 @@ public class UsageTilesPane extends VBox {
         tokenCountTile = TileBuilder.create()
                 .skinType(Tile.SkinType.NUMBER)
                 .prefSize(TILE_W, TILE_H)
-                .title("Tokens Used")
                 .description("of 0")
                 .value(0).decimals(0).animated(false)
                 .textSize(Tile.TextSize.SMALLER)
@@ -99,11 +96,17 @@ public class UsageTilesPane extends VBox {
         activeSessionsTile = buildAggregateTile("Active Sessions");
         totalTokensTile = buildAggregateTile("Total Tokens");
 
-        // Layout
-        var donutWithLegend = new VBox(4, donutTile, buildDonutLegend());
-        donutWithLegend.setAlignment(Pos.CENTER);
+        // Layout — each tile gets a Label header + tile in a VBox
+        var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile, buildDonutLegend());
+        donutCol.setAlignment(Pos.CENTER);
 
-        var detailRow = new HBox(6, donutWithLegend, contextGauge, tokenCountTile);
+        var contextCol = new VBox(4, tileLabel("Context Used"), contextGauge);
+        contextCol.setAlignment(Pos.CENTER);
+
+        var tokensCol = new VBox(4, tileLabel("Tokens Used"), tokenCountTile);
+        tokensCol.setAlignment(Pos.CENTER);
+
+        var detailRow = new HBox(6, donutCol, contextCol, tokensCol);
         detailRow.setAlignment(Pos.CENTER);
 
         var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
@@ -265,6 +268,12 @@ public class UsageTilesPane extends VBox {
         var label = new Label(text);
         label.getStyleClass().add("section-label");
         label.setPadding(new Insets(4, 0, 0, 4));
+        return label;
+    }
+
+    private static Label tileLabel(String text) {
+        var label = new Label(text);
+        label.getStyleClass().add("tile-title-label");
         return label;
     }
 }
