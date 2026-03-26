@@ -709,7 +709,8 @@ public class SettingsWindow {
         if (session.remote()) {
             row = addDetailHyperlink(row, "Repository", session.workingDirectory(),
                     "https://github.com/" + session.workingDirectory());
-            row = addDetailRow(row, "State", session.status().name());
+            row = addDetailRow(row, "State",
+                    session.remoteState() != null ? session.remoteState() : session.status().name());
             if (session.user() != null)
                 row = addDetailRow(row, "User", session.user());
             if (session.pullRequestNumber() != null) {

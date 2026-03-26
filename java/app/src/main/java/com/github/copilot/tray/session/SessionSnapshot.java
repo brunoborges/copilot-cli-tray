@@ -23,17 +23,18 @@ public record SessionSnapshot(
         String pullRequestState,
         String pullRequestTitle,
         String pullRequestUrl,
-        String user
+        String user,
+        String remoteState
 ) {
     /**
-     * Compact constructor for local sessions (no PR fields).
+     * Compact constructor for local sessions (no PR/remote fields).
      */
     public SessionSnapshot(String id, String name, SessionStatus status, String model,
                            Instant createdAt, Instant lastActivityAt, String workingDirectory,
                            UsageSnapshot usage, List<SubagentSnapshot> subagents,
                            boolean pendingPermission, boolean remote) {
         this(id, name, status, model, createdAt, lastActivityAt, workingDirectory,
-                usage, subagents, pendingPermission, remote, null, null, null, null, null);
+                usage, subagents, pendingPermission, remote, null, null, null, null, null, null);
     }
 
     /**
@@ -59,48 +60,48 @@ public record SessionSnapshot(
     public SessionSnapshot withStatus(SessionStatus newStatus) {
         return new SessionSnapshot(id, name, newStatus, model, createdAt,
                 Instant.now(), workingDirectory, usage, subagents, pendingPermission, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withUsage(UsageSnapshot newUsage) {
         return new SessionSnapshot(id, name, status, model, createdAt,
                 Instant.now(), workingDirectory, newUsage, subagents, pendingPermission, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withModel(String newModel) {
         return new SessionSnapshot(id, name, status, newModel, createdAt,
                 Instant.now(), workingDirectory, usage, subagents, pendingPermission, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withSubagents(List<SubagentSnapshot> newSubagents) {
         return new SessionSnapshot(id, name, status, model, createdAt,
                 Instant.now(), workingDirectory, usage, newSubagents, pendingPermission, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withPendingPermission(boolean pending) {
         return new SessionSnapshot(id, name, status, model, createdAt,
                 Instant.now(), workingDirectory, usage, subagents, pending, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withName(String newName) {
         return new SessionSnapshot(id, newName, status, model, createdAt,
                 lastActivityAt, workingDirectory, usage, subagents, pendingPermission, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withLastActivity(Instant time) {
         return new SessionSnapshot(id, name, status, model, createdAt,
                 time, workingDirectory, usage, subagents, pendingPermission, remote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 
     public SessionSnapshot withRemote(boolean isRemote) {
         return new SessionSnapshot(id, name, status, model, createdAt,
                 lastActivityAt, workingDirectory, usage, subagents, pendingPermission, isRemote,
-                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user);
+                pullRequestNumber, pullRequestState, pullRequestTitle, pullRequestUrl, user, remoteState);
     }
 }
