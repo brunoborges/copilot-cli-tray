@@ -2,6 +2,7 @@ package com.github.copilot.tray.ui;
 
 import com.github.copilot.sdk.ConnectionState;
 import com.github.copilot.tray.config.ConfigStore;
+import com.github.copilot.tray.remote.GhCliRunner;
 import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
@@ -40,6 +41,7 @@ public class SettingsWindow {
     private final SessionManager sessionManager;
     private final ConfigStore configStore;
     private final SdkBridge sdkBridge;
+    private final GhCliRunner ghCliRunner;
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
     private Stage stage;
@@ -54,6 +56,8 @@ public class SettingsWindow {
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
     private Button resumeBtn, attachBtn, renameBtn, deleteBtn;
+    // Remote-specific action buttons
+    private Button viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn;
     private SessionSnapshot selectedSession;
     private String selectedDirectory; // track across refreshes
     private boolean refreshing;
@@ -68,11 +72,12 @@ public class SettingsWindow {
     private CheckBox openDashboardOnStartupCheckBox;
 
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
-                          SdkBridge sdkBridge,
+                          SdkBridge sdkBridge, GhCliRunner ghCliRunner,
                           Consumer<String> deleteHandler, Consumer<String> resumeHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
         this.sdkBridge = sdkBridge;
+        this.ghCliRunner = ghCliRunner;
         this.deleteHandler = deleteHandler;
         this.resumeHandler = resumeHandler;
     }
@@ -155,7 +160,7 @@ public class SettingsWindow {
         directoryList = new TreeView<>(root);
         directoryList.setShowRoot(false);
         directoryList.setPrefWidth(280);
-        directoryList.setCellFactory(tv -> new DirectoryTreeCell(directoryList));
+        directoryList.setCellFactory(tv -> new DirectoryTreeCell(directoryList, this::isRemoteSelected));
         directoryList.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nv) -> {
                     if (refreshing) return;
@@ -307,7 +312,53 @@ public class SettingsWindow {
         heightLabel.getStyleClass().add("debug-label");
         bottomPaneSplit.heightProperty().addListener((_, _, h) ->
                 heightLabel.setText("h: %.0f".formatted(h.doubleValue())));
-        actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn, heightLabel);
+
+        // Remote-specific action buttons
+        viewLogsBtn = new Button("View Logs");
+        viewLogsBtn.setDisable(true);
+        viewLogsBtn.setOnAction(e -> {
+            if (selectedSession == null || !selectedSession.remote()) return;
+            var session = selectedSession;
+            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {});
+            logWindow.show();
+            ghCliRunner.getTaskLogs(session.id())
+                    .thenAccept(logs -> Platform.runLater(() -> logWindow.appendLog(logs)));
+        });
+        followLogsBtn = new Button("Follow Logs");
+        followLogsBtn.setDisable(true);
+        followLogsBtn.setOnAction(e -> {
+            if (selectedSession == null || !selectedSession.remote()) return;
+            var session = selectedSession;
+            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {});
+            logWindow.show();
+            try {
+                var process = ghCliRunner.followTaskLogs(session.id(),
+                        line -> Platform.runLater(() -> logWindow.appendLog(line)));
+                logWindow.setOnCloseAction(() -> process.destroyForcibly());
+            } catch (Exception ex) {
+                logWindow.appendLog("ERROR: " + ex.getMessage());
+            }
+        });
+        openBrowserBtn = new Button("Open in Browser");
+        openBrowserBtn.setDisable(true);
+        openBrowserBtn.setOnAction(e -> {
+            if (selectedSession != null && selectedSession.remote())
+                ghCliRunner.openInBrowser(selectedSession.id());
+        });
+        openPrBtn = new Button("Open PR");
+        openPrBtn.setDisable(true);
+        openPrBtn.setOnAction(e -> {
+            if (selectedSession != null && selectedSession.pullRequestUrl() != null) {
+                try {
+                    java.awt.Desktop.getDesktop().browse(java.net.URI.create(selectedSession.pullRequestUrl()));
+                } catch (Exception ex) {
+                    LOG.warn("Failed to open PR URL: {}", ex.getMessage());
+                }
+            }
+        });
+
+        actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn,
+                viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn, heightLabel);
         actionBar.setPadding(new Insets(6));
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
@@ -509,10 +560,33 @@ public class SettingsWindow {
     private void updateActionButtons(int selectionCount) {
         boolean none = selectionCount == 0;
         boolean multi = selectionCount > 1;
+        boolean remote = isRemoteSelected();
+        // Local actions
+        resumeBtn.setVisible(!remote);
+        resumeBtn.setManaged(!remote);
+        attachBtn.setVisible(!remote);
+        attachBtn.setManaged(!remote);
+        renameBtn.setVisible(!remote);
+        renameBtn.setManaged(!remote);
+        deleteBtn.setVisible(!remote);
+        deleteBtn.setManaged(!remote);
         resumeBtn.setDisable(none || multi);
         attachBtn.setDisable(none || multi);
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
+        // Remote actions
+        viewLogsBtn.setVisible(remote);
+        viewLogsBtn.setManaged(remote);
+        followLogsBtn.setVisible(remote);
+        followLogsBtn.setManaged(remote);
+        openBrowserBtn.setVisible(remote);
+        openBrowserBtn.setManaged(remote);
+        openPrBtn.setVisible(remote);
+        openPrBtn.setManaged(remote);
+        viewLogsBtn.setDisable(none || multi);
+        followLogsBtn.setDisable(none || multi);
+        openBrowserBtn.setDisable(none || multi);
+        openPrBtn.setDisable(none || multi || (selectedSession != null && selectedSession.pullRequestUrl() == null));
     }
 
     private void syncUsageTiles(List<SessionSnapshot> selected) {
@@ -531,31 +605,52 @@ public class SettingsWindow {
         int row = 0;
         row = addDetailRow(row, "ID", session.id(), true);
         row = addDetailRow(row, "Name", session.name());
-        row = addDetailRow(row, "Directory", session.workingDirectory(), true);
-        row = addDetailRow(row, "Model", session.model());
-        row = addDetailRow(row, "Status", session.status().name());
-        row = addDetailRow(row, "Location", session.remote() ? "Remote" : "Local");
+
+        if (session.remote()) {
+            row = addDetailRow(row, "Repository", session.workingDirectory(), true);
+            row = addDetailRow(row, "State", session.status().name());
+            if (session.user() != null)
+                row = addDetailRow(row, "User", session.user());
+            if (session.pullRequestNumber() != null) {
+                row = addSectionHeader(row, "Pull Request");
+                row = addDetailRow(row, "PR #", String.valueOf(session.pullRequestNumber()));
+                if (session.pullRequestTitle() != null)
+                    row = addDetailRow(row, "Title", session.pullRequestTitle());
+                if (session.pullRequestState() != null)
+                    row = addDetailRow(row, "PR State", session.pullRequestState());
+                if (session.pullRequestUrl() != null)
+                    row = addDetailRow(row, "URL", session.pullRequestUrl(), true);
+            }
+        } else {
+            row = addDetailRow(row, "Directory", session.workingDirectory(), true);
+            row = addDetailRow(row, "Model", session.model());
+            row = addDetailRow(row, "Status", session.status().name());
+            row = addDetailRow(row, "Location", "Local");
+        }
+
         if (session.createdAt() != null)
             row = addDetailRow(row, "Created", DATE_FMT.format(session.createdAt()));
         if (session.lastActivityAt() != null)
             row = addDetailRow(row, "Last Active", DATE_FMT.format(session.lastActivityAt()));
 
-        // Usage section
-        row = addSectionHeader(row, "Usage");
-        row = addDetailRow(row, "Tokens", session.usage().currentTokens()
-                + " / " + session.usage().tokenLimit()
-                + "  (" + (int) session.usage().tokenUsagePercent() + "%)");
-        row = addDetailRow(row, "Messages", String.valueOf(session.usage().messagesCount()));
+        if (!session.remote()) {
+            // Usage section (local only — remote has no token data)
+            row = addSectionHeader(row, "Usage");
+            row = addDetailRow(row, "Tokens", session.usage().currentTokens()
+                    + " / " + session.usage().tokenLimit()
+                    + "  (" + (int) session.usage().tokenUsagePercent() + "%)");
+            row = addDetailRow(row, "Messages", String.valueOf(session.usage().messagesCount()));
 
-        if (!session.subagents().isEmpty()) {
-            row = addSectionHeader(row, "Subagents");
-            for (var sub : session.subagents()) {
-                row = addDetailRow(row, sub.id(), "[" + sub.status() + "] " + sub.description());
+            if (!session.subagents().isEmpty()) {
+                row = addSectionHeader(row, "Subagents");
+                for (var sub : session.subagents()) {
+                    row = addDetailRow(row, sub.id(), "[" + sub.status() + "] " + sub.description());
+                }
             }
-        }
-        if (session.pendingPermission()) {
-            row = addSectionHeader(row, "");
-            addDetailRow(row, "⚠", "Permission request pending");
+            if (session.pendingPermission()) {
+                row = addSectionHeader(row, "");
+                addDetailRow(row, "⚠", "Permission request pending");
+            }
         }
         detailPane.getChildren().setAll(detailGrid);
     }
@@ -655,9 +750,15 @@ public class SettingsWindow {
     private static class DirectoryTreeCell extends TreeCell<String> {
         private static final String FOLDER_CLOSED = "📁";
         private static final String FOLDER_OPEN   = "📂";
+        private static final String REPO_CLOSED   = "📦";
+        private static final String REPO_OPEN     = "📂";
         private final TreeView<String> tree;
+        private final java.util.function.BooleanSupplier remoteCheck;
 
-        DirectoryTreeCell(TreeView<String> tree) { this.tree = tree; }
+        DirectoryTreeCell(TreeView<String> tree, java.util.function.BooleanSupplier remoteCheck) {
+            this.tree = tree;
+            this.remoteCheck = remoteCheck;
+        }
 
         @Override protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
@@ -666,11 +767,17 @@ public class SettingsWindow {
                 return;
             }
             var dirPath = stripBadge(item);
-            var shortPath = shortenPath(dirPath);
+            boolean isRemote = remoteCheck.getAsBoolean();
+            var shortPath = isRemote ? dirPath : shortenPath(dirPath);
             var badge = item.substring(dirPath.length());
             boolean selected = getTreeItem() != null
                     && getTreeItem() == tree.getSelectionModel().getSelectedItem();
-            var icon = selected ? FOLDER_OPEN : FOLDER_CLOSED;
+            String icon;
+            if (isRemote) {
+                icon = selected ? REPO_OPEN : REPO_CLOSED;
+            } else {
+                icon = selected ? FOLDER_OPEN : FOLDER_CLOSED;
+            }
             setText(icon + " " + shortPath + badge);
             setTooltip(new Tooltip(dirPath));
         }

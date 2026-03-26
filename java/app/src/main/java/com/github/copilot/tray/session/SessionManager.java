@@ -47,6 +47,11 @@ public class SessionManager {
         notifyListeners();
     }
 
+    /** Directly put a fully constructed snapshot (used by RemoteSessionPoller). */
+    public void putSession(SessionSnapshot snapshot) {
+        sessions.put(snapshot.id(), snapshot);
+    }
+
     public void removeSession(String id) {
         LOG.info("Session removed: {}", id);
         sessions.remove(id);

@@ -23,6 +23,7 @@ public class SessionEventLogWindow {
 
     private final Stage stage;
     private final TextArea logArea;
+    private Runnable extraCloseAction;
 
     /**
      * @param sessionId   the session being attached to
@@ -53,9 +54,15 @@ public class SessionEventLogWindow {
         stage.setOnCloseRequest(e -> {
             appendLog("— Detaching from session —");
             onClose.run();
+            if (extraCloseAction != null) extraCloseAction.run();
         });
 
         appendLog("Attaching to session " + sessionId + "...");
+    }
+
+    /** Set an additional action to run when the window is closed (e.g., kill a process). */
+    public void setOnCloseAction(Runnable action) {
+        this.extraCloseAction = action;
     }
 
     /** Called from any thread when an SDK event arrives. */

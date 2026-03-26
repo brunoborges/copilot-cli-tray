@@ -2,6 +2,8 @@ package com.github.copilot.tray;
 
 import com.github.copilot.tray.config.ConfigStore;
 import com.github.copilot.tray.notify.Notifier;
+import com.github.copilot.tray.remote.GhCliRunner;
+import com.github.copilot.tray.remote.RemoteSessionPoller;
 import com.github.copilot.tray.sdk.EventRouter;
 import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.sdk.TerminalLauncher;
@@ -29,6 +31,8 @@ public class TrayApplication {
     private final TrayManager trayManager;
     private final Notifier notifier;
     private final SettingsWindow settingsWindow;
+    private final GhCliRunner ghCliRunner;
+    private final RemoteSessionPoller remotePoller;
 
     public TrayApplication() {
         this.configStore = new ConfigStore();
@@ -37,7 +41,9 @@ public class TrayApplication {
         this.eventRouter = new EventRouter(sessionManager);
         this.terminalLauncher = new TerminalLauncher();
         this.notifier = new Notifier();
-        this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge,
+        this.ghCliRunner = new GhCliRunner();
+        this.remotePoller = new RemoteSessionPoller(ghCliRunner, sessionManager);
+        this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge, ghCliRunner,
                 sessionId -> {
                     try {
                         sdkBridge.deleteSession(sessionId).join();
@@ -132,6 +138,9 @@ public class TrayApplication {
         // Register shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown, "shutdown-hook"));
 
+        // Start remote session poller
+        remotePoller.start(config.getPollIntervalSeconds() * 2);
+
         LOG.info("GitHub Copilot Agentic Tray started");
     }
 
@@ -140,6 +149,7 @@ public class TrayApplication {
      */
     public void shutdown() {
         LOG.info("Shutting down GitHub Copilot Agentic Tray");
+        remotePoller.stop();
         trayManager.uninstall();
         sdkBridge.disconnect();
         configStore.save();
