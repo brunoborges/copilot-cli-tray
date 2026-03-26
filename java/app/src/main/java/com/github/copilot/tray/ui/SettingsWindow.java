@@ -60,7 +60,7 @@ public class SettingsWindow {
     private HBox actionBar;
     private Button resumeBtn, attachBtn, renameBtn, deleteBtn;
     // Remote-specific action buttons
-    private Button viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn;
+    private Button viewLogsBtn, openBrowserBtn, openPrBtn, openRepoBtn;
     private SessionSnapshot selectedSession;
     private String selectedDirectory; // track across refreshes
     private boolean refreshing;
@@ -335,38 +335,19 @@ public class SettingsWindow {
         });
 
         // Remote-specific action buttons
-        viewLogsBtn = new Button("View Logs");
-        viewLogsBtn.setDisable(true);
-        viewLogsBtn.setOnAction(e -> {
-            if (selectedSession == null || !selectedSession.remote()) return;
-            var session = selectedSession;
-            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager);
-            logWindow.show();
-            ghCliRunner.getTaskLogs(session.id())
-                    .thenAccept(logs -> Platform.runLater(() -> logWindow.appendLog(logs)));
-        });
-        followLogsBtn = new Button("Follow Logs");
-        followLogsBtn.setDisable(true);
-        followLogsBtn.setOnAction(e -> {
-            if (selectedSession == null || !selectedSession.remote()) return;
-            var session = selectedSession;
-            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager);
-            logWindow.show();
-            try {
-                var process = ghCliRunner.followTaskLogs(session.id(),
-                        line -> Platform.runLater(() -> logWindow.appendLog(line)));
-                logWindow.setOnCloseAction(() -> process.destroyForcibly());
-            } catch (Exception ex) {
-                logWindow.appendLog("ERROR: " + ex.getMessage());
+        openRepoBtn = new Button("Open Repository");
+        openRepoBtn.setDisable(true);
+        openRepoBtn.setOnAction(e -> {
+            if (selectedSession != null && selectedSession.workingDirectory() != null) {
+                try {
+                    java.awt.Desktop.getDesktop().browse(
+                            java.net.URI.create("https://github.com/" + selectedSession.workingDirectory()));
+                } catch (Exception ex) {
+                    LOG.warn("Failed to open repository URL: {}", ex.getMessage());
+                }
             }
         });
-        openBrowserBtn = new Button("Open Agent Session");
-        openBrowserBtn.setDisable(true);
-        openBrowserBtn.setOnAction(e -> {
-            if (selectedSession != null && selectedSession.remote())
-                ghCliRunner.openInBrowser(selectedSession.id());
-        });
-        openPrBtn = new Button("Open PR");
+        openPrBtn = new Button("Open Pull Request");
         openPrBtn.setDisable(true);
         openPrBtn.setOnAction(e -> {
             if (selectedSession != null && selectedSession.pullRequestUrl() != null) {
@@ -377,9 +358,45 @@ public class SettingsWindow {
                 }
             }
         });
+        openBrowserBtn = new Button("Open Agent Session");
+        openBrowserBtn.setDisable(true);
+        openBrowserBtn.setOnAction(e -> {
+            if (selectedSession != null && selectedSession.remote())
+                ghCliRunner.openInBrowser(selectedSession.id());
+        });
+        viewLogsBtn = new Button("View Logs");
+        viewLogsBtn.setDisable(true);
+        viewLogsBtn.setOnAction(e -> {
+            if (selectedSession == null || !selectedSession.remote()) return;
+            var session = selectedSession;
+
+            var choices = List.of("Latest Log", "Follow in Real Time");
+            var dialog = new ChoiceDialog<>(choices.getFirst(), choices);
+            dialog.setTitle("View Logs");
+            dialog.setHeaderText("How would you like to view logs?");
+            dialog.setContentText("Mode:");
+            themeManager.register(dialog.getDialogPane().getScene());
+
+            dialog.showAndWait().ifPresent(choice -> {
+                var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager);
+                logWindow.show();
+                if ("Follow in Real Time".equals(choice)) {
+                    try {
+                        var process = ghCliRunner.followTaskLogs(session.id(),
+                                line -> Platform.runLater(() -> logWindow.appendLog(line)));
+                        logWindow.setOnCloseAction(() -> process.destroyForcibly());
+                    } catch (Exception ex) {
+                        logWindow.appendLog("ERROR: " + ex.getMessage());
+                    }
+                } else {
+                    ghCliRunner.getTaskLogs(session.id())
+                            .thenAccept(logs -> Platform.runLater(() -> logWindow.appendLog(logs)));
+                }
+            });
+        });
 
         actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn,
-                viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn);
+                openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.getStyleClass().add("action-bar");
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
@@ -712,18 +729,18 @@ public class SettingsWindow {
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
         // Remote actions
-        viewLogsBtn.setVisible(remote);
-        viewLogsBtn.setManaged(remote);
-        followLogsBtn.setVisible(remote);
-        followLogsBtn.setManaged(remote);
-        openBrowserBtn.setVisible(remote);
-        openBrowserBtn.setManaged(remote);
+        openRepoBtn.setVisible(remote);
+        openRepoBtn.setManaged(remote);
         openPrBtn.setVisible(remote);
         openPrBtn.setManaged(remote);
-        viewLogsBtn.setDisable(none || multi);
-        followLogsBtn.setDisable(none || multi);
-        openBrowserBtn.setDisable(none || multi);
+        openBrowserBtn.setVisible(remote);
+        openBrowserBtn.setManaged(remote);
+        viewLogsBtn.setVisible(remote);
+        viewLogsBtn.setManaged(remote);
+        openRepoBtn.setDisable(none || multi);
         openPrBtn.setDisable(none || multi || (selectedSession != null && selectedSession.pullRequestUrl() == null));
+        openBrowserBtn.setDisable(none || multi);
+        viewLogsBtn.setDisable(none || multi);
     }
 
     private void syncUsageTiles(List<SessionSnapshot> selected) {
