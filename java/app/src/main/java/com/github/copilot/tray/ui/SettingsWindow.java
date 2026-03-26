@@ -176,6 +176,12 @@ public class SettingsWindow {
 
         var scene = new Scene(root, 1100, 800);
         themeManager.register(scene);
+        // Cmd+W / Ctrl+W to hide the window
+        scene.getAccelerators().put(
+                new javafx.scene.input.KeyCodeCombination(
+                        javafx.scene.input.KeyCode.W,
+                        javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
+                () -> stage.hide());
         var s = new Stage();
         s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
         s.setMinHeight(700);
