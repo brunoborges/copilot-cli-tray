@@ -11,7 +11,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
+
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
@@ -83,11 +83,11 @@ public class PrunePanel extends VBox {
         var topRow = new HBox(10, scanBtn, includeTrivialCb, infoBtn, spinner);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        summaryLabel.setTextFill(Color.web("#888888"));
+        summaryLabel.getStyleClass().add("prune-summary");
         summaryLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
 
         statusLabel.setWrapText(true);
-        statusLabel.setTextFill(Color.web("#cccccc"));
+        statusLabel.getStyleClass().add("prune-status");
 
         // Selection controls
         deselectAllBtn.setOnAction(e -> setSelectionByCategory(null, false));

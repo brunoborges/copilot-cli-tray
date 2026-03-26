@@ -861,13 +861,12 @@ public class SettingsWindow {
         var back = new javafx.scene.shape.SVGPath();
         back.setContent(COPY_ICON_BACK);
         back.setFill(Color.TRANSPARENT);
-        back.setStroke(Color.gray(0.6));
-        back.setStrokeWidth(1.2);
+        back.setStroke(Color.gray(0.65));        back.setStrokeWidth(1.2);
 
         var front = new javafx.scene.shape.SVGPath();
         front.setContent(COPY_ICON_FRONT);
         front.setFill(Color.TRANSPARENT);
-        front.setStroke(Color.gray(0.6));
+        front.setStroke(Color.gray(0.65));
         front.setStrokeWidth(1.2);
 
         return new javafx.scene.Group(back, front);

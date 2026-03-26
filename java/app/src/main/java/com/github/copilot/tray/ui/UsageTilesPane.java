@@ -249,7 +249,6 @@ public class UsageTilesPane extends VBox {
     private static HBox legendItem(String name, Color color) {
         var swatch = new javafx.scene.shape.Circle(5, color);
         var label = new Label(name);
-        label.setTextFill(Color.web("#cccccc"));
         label.getStyleClass().add("legend-label");
         var box = new HBox(4, swatch, label);
         box.setAlignment(Pos.CENTER_LEFT);
@@ -264,7 +263,6 @@ public class UsageTilesPane extends VBox {
 
     private static Label sectionLabel(String text) {
         var label = new Label(text);
-        label.setTextFill(Color.web("#aaaacc"));
         label.getStyleClass().add("section-label");
         label.setPadding(new Insets(4, 0, 0, 4));
         return label;
