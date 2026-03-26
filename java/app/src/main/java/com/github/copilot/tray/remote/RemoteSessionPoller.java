@@ -21,10 +21,13 @@ public class RemoteSessionPoller {
 
     private static final Logger LOG = LoggerFactory.getLogger(RemoteSessionPoller.class);
 
+    public enum PollingState { NOT_STARTED, POLLING, READY }
+
     private final GhCliRunner ghCli;
     private final SessionManager sessionManager;
     private ScheduledExecutorService scheduler;
     private boolean ghAvailable;
+    private volatile PollingState pollingState = PollingState.NOT_STARTED;
 
     public RemoteSessionPoller(GhCliRunner ghCli, SessionManager sessionManager) {
         this.ghCli = ghCli;
@@ -61,8 +64,19 @@ public class RemoteSessionPoller {
         return ghAvailable;
     }
 
+    /**
+     * Current polling state — UI can show loading indicator if POLLING.
+     */
+    public PollingState getPollingState() {
+        return pollingState;
+    }
+
     private void poll() {
         try {
+            if (pollingState == PollingState.NOT_STARTED) {
+                pollingState = PollingState.POLLING;
+            }
+
             if (!ghAvailable) {
                 ghAvailable = ghCli.isAvailable();
                 if (!ghAvailable) {
@@ -73,8 +87,12 @@ public class RemoteSessionPoller {
             }
 
             var tasks = ghCli.listTasks(50).join();
+            boolean firstPoll = pollingState == PollingState.POLLING;
+            pollingState = PollingState.READY;
+
             if (tasks.isEmpty()) {
                 LOG.debug("No remote agent tasks found");
+                if (firstPoll) sessionManager.fireChange(); // clear loading state
                 return;
             }
 
@@ -93,7 +111,7 @@ public class RemoteSessionPoller {
                 }
             }
 
-            if (changed) {
+            if (changed || firstPoll) {
                 sessionManager.fireChange();
             }
         } catch (Exception e) {

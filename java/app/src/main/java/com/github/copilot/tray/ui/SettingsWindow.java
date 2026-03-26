@@ -3,6 +3,7 @@ package com.github.copilot.tray.ui;
 import com.github.copilot.sdk.ConnectionState;
 import com.github.copilot.tray.config.ConfigStore;
 import com.github.copilot.tray.remote.GhCliRunner;
+import com.github.copilot.tray.remote.RemoteSessionPoller;
 import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
@@ -42,6 +43,7 @@ public class SettingsWindow {
     private final ConfigStore configStore;
     private final SdkBridge sdkBridge;
     private final GhCliRunner ghCliRunner;
+    private final RemoteSessionPoller remotePoller;
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
     private Stage stage;
@@ -79,11 +81,13 @@ public class SettingsWindow {
 
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
                           SdkBridge sdkBridge, GhCliRunner ghCliRunner,
+                          RemoteSessionPoller remotePoller,
                           Consumer<String> deleteHandler, Consumer<String> resumeHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
         this.sdkBridge = sdkBridge;
         this.ghCliRunner = ghCliRunner;
+        this.remotePoller = remotePoller;
         this.deleteHandler = deleteHandler;
         this.resumeHandler = resumeHandler;
     }
@@ -505,6 +509,20 @@ public class SettingsWindow {
             buildLocalTableColumns();
         }
 
+        // Update table placeholder based on mode and polling state
+        if (remote && remotePoller != null
+                && remotePoller.getPollingState() != RemoteSessionPoller.PollingState.READY) {
+            var loading = new VBox(8);
+            loading.setAlignment(Pos.CENTER);
+            var spinner = new ProgressIndicator();
+            spinner.setMaxSize(32, 32);
+            loading.getChildren().addAll(spinner, new Label("Loading remote sessions…"));
+            sessionTable.setPlaceholder(loading);
+        } else {
+            sessionTable.setPlaceholder(new Label(remote
+                    ? "No remote sessions found." : "Select a directory."));
+        }
+
         // Swap the bottom section: local shows detail+tiles split, remote shows detail full-width
         var actionPane = rightBox.getChildren().getLast(); // actionPane is always last
         rightBox.getChildren().clear();
@@ -564,6 +582,13 @@ public class SettingsWindow {
         refreshing = true;
         try {
             boolean isRemote = isRemoteSelected();
+
+            // Update placeholder when remote polling completes
+            if (isRemote && remotePoller != null
+                    && remotePoller.getPollingState() == RemoteSessionPoller.PollingState.READY) {
+                sessionTable.setPlaceholder(new Label("No remote sessions found."));
+            }
+
             String previousDir = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
             // Save ALL selected session IDs for multi-select restore
             var previousSelectedIds = sessionTable.getSelectionModel().getSelectedItems().stream()

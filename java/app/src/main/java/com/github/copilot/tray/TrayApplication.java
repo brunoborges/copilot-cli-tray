@@ -44,6 +44,7 @@ public class TrayApplication {
         this.ghCliRunner = new GhCliRunner();
         this.remotePoller = new RemoteSessionPoller(ghCliRunner, sessionManager);
         this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge, ghCliRunner,
+                remotePoller,
                 sessionId -> {
                     try {
                         sdkBridge.deleteSession(sessionId).join();
