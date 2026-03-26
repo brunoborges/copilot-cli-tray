@@ -174,12 +174,12 @@ public class UsageTilesPane extends VBox {
         tokenCountTile.setValue(u.currentTokens());
         tokenCountTile.setDescription("of " + formatTokens(u.tokenLimit()));
 
-        systemToolsTile.setValue(u.systemToolsPercent());
-        systemToolsTile.setDescription(formatTokens(u.systemToolsTokens()));
-        messagesTokTile.setValue(u.messagesPercent());
-        messagesTokTile.setDescription(formatTokens(u.messagesTokens()));
-        availableTile.setValue(u.availablePercent());
-        availableTile.setDescription(formatTokens(u.availableTokens()));
+        systemToolsTile.setValue(u.systemToolsTokens());
+        systemToolsTile.setDescription(String.format("%.1f%%", u.systemToolsPercent()));
+        messagesTokTile.setValue(u.messagesTokens());
+        messagesTokTile.setDescription(String.format("%.1f%%", u.messagesPercent()));
+        availableTile.setValue(u.availableTokens());
+        availableTile.setDescription(String.format("%.1f%%", u.availablePercent()));
     }
 
     private void updateAggregateDetailTiles(List<SessionSnapshot> selected) {
@@ -197,12 +197,12 @@ public class UsageTilesPane extends VBox {
         int sysTokSum = selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum();
         int msgTokSum = selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum();
         int availSum = selected.stream().mapToInt(s -> s.usage().availableTokens()).sum();
-        systemToolsTile.setValue(0);
-        systemToolsTile.setDescription(formatTokens(sysTokSum));
-        messagesTokTile.setValue(0);
-        messagesTokTile.setDescription(formatTokens(msgTokSum));
-        availableTile.setValue(0);
-        availableTile.setDescription(formatTokens(availSum));
+        systemToolsTile.setValue(sysTokSum);
+        systemToolsTile.setDescription("");
+        messagesTokTile.setValue(msgTokSum);
+        messagesTokTile.setDescription("");
+        availableTile.setValue(availSum);
+        availableTile.setDescription("");
     }
 
     private void clearDetailTiles() {
@@ -231,11 +231,10 @@ public class UsageTilesPane extends VBox {
 
     private Tile buildBreakdownTile(Color color) {
         return TileBuilder.create()
-                .skinType(Tile.SkinType.PERCENTAGE)
+                .skinType(Tile.SkinType.NUMBER)
                 .prefSize(TILE_W, SMALL_H)
-                .unit("%")
-                .maxValue(100).value(0)
-                .barColor(color)
+                .value(0).decimals(0)
+                .valueColor(color)
                 .animated(false)
                 .textSize(Tile.TextSize.SMALLER)
                 .build();
