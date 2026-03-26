@@ -69,27 +69,14 @@ public class TerminalLauncher {
     }
 
     private List<String> buildMacCommand(String shellCmd, String workingDirectory) {
-        try {
-            var tmp = File.createTempFile("copilot-tray-", ".command");
-            tmp.deleteOnExit();
-            try (var writer = new java.io.FileWriter(tmp)) {
-                writer.write("#!/bin/bash\n");
-                if (workingDirectory != null && !workingDirectory.isEmpty()) {
-                    writer.write("cd " + escapeShell(workingDirectory) + "\n");
-                }
-                writer.write(shellCmd + "\n");
-            }
-            tmp.setExecutable(true);
-            return List.of("open", tmp.getAbsolutePath());
-        } catch (IOException e) {
-            LOG.error("Failed to create .command file", e);
-            var cdPrefix = workingDirectory != null ? "cd " + escapeShell(workingDirectory) + " && " : "";
-            return List.of("osascript",
-                    "-e", "tell application \"Terminal\"",
-                    "-e", "activate",
-                    "-e", "do script \"" + cdPrefix + shellCmd + "\"",
-                    "-e", "end tell");
-        }
+        var cdPrefix = (workingDirectory != null && !workingDirectory.isEmpty())
+                ? "cd " + escapeShell(workingDirectory) + " && " : "";
+        var fullCmd = cdPrefix + shellCmd;
+        return List.of("osascript",
+                "-e", "tell application \"Terminal\"",
+                "-e", "activate",
+                "-e", "do script \"" + fullCmd.replace("\"", "\\\"") + "\"",
+                "-e", "end tell");
     }
 
     private List<String> buildWindowsCommand(String shellCmd, String workingDirectory) {
