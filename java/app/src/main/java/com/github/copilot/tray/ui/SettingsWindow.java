@@ -219,7 +219,6 @@ public class SettingsWindow {
         bottomPaneSplit.setDividerPositions(0.30);
         bottomPaneSplit.setPrefHeight(350);
         bottomPaneSplit.setMinHeight(300);
-        bottomPaneSplit.setMaxHeight(400);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
