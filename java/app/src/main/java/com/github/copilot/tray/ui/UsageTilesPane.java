@@ -97,20 +97,20 @@ public class UsageTilesPane extends VBox {
         totalTokensTile = buildAggregateTile("Total Tokens");
 
         // Layout — each tile gets a Label header + tile in a VBox
-        var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile, buildDonutLegend());
-        donutCol.setAlignment(Pos.CENTER);
+        var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile);
+        donutCol.setAlignment(Pos.CENTER_LEFT);
 
         var contextCol = new VBox(4, tileLabel("Context Used"), contextGauge);
-        contextCol.setAlignment(Pos.CENTER);
+        contextCol.setAlignment(Pos.CENTER_LEFT);
 
         var tokensCol = new VBox(4, tileLabel("Tokens Used"), tokenCountTile);
-        tokensCol.setAlignment(Pos.CENTER);
+        tokensCol.setAlignment(Pos.CENTER_LEFT);
 
         var detailRow = new HBox(6, donutCol, contextCol, tokensCol);
-        detailRow.setAlignment(Pos.CENTER);
+        detailRow.setAlignment(Pos.CENTER_LEFT);
 
         var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
-        breakdownRow.setAlignment(Pos.CENTER);
+        breakdownRow.setAlignment(Pos.CENTER_LEFT);
 
         aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
         aggregateRow.setAlignment(Pos.CENTER_LEFT);
