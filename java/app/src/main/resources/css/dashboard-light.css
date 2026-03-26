@@ -71,51 +71,40 @@
     -fx-padding: 0 1 0 1;
 }
 
-/* --- Tab pane (VS Code style) --- */
+/* --- Activity bar (sidebar navigation) --- */
 
-.tab-pane {
-    -fx-tab-min-height: 32;
+.activity-bar {
+    -fx-background-color: #ececec;
+    -fx-padding: 4 0 4 0;
+    -fx-pref-width: 48;
+    -fx-min-width: 48;
+    -fx-max-width: 48;
+    -fx-border-color: transparent #d4d4d4 transparent transparent;
+    -fx-border-width: 0 1 0 0;
 }
 
-.tab-pane > .tab-header-area {
-    -fx-background-color: #ececec;
-    -fx-padding: 0;
-}
-
-.tab-pane > .tab-header-area > .headers-region > .tab {
-    -fx-background-color: #ececec;
+.nav-button {
+    -fx-background-color: transparent;
     -fx-background-radius: 0;
-    -fx-padding: 8 18;
+    -fx-text-fill: #999999;
+    -fx-font-size: 20px;
+    -fx-padding: 12 0;
+    -fx-cursor: hand;
+    -fx-pref-width: 48;
+    -fx-min-width: 48;
+    -fx-max-width: 48;
+    -fx-alignment: center;
     -fx-border-color: transparent transparent transparent transparent;
-    -fx-border-width: 0 0 2 0;
+    -fx-border-width: 0 0 0 2;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: #ffffff;
-    -fx-border-color: transparent transparent #0078d4 transparent;
+.nav-button:hover {
+    -fx-text-fill: #555555;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:hover {
-    -fx-background-color: #e0e0e0;
-}
-
-.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
-    -fx-text-fill: #717171;
-    -fx-font-size: 13px;
-}
-
-.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+.nav-button:selected {
     -fx-text-fill: #333333;
-    -fx-font-weight: normal;
-}
-
-.tab-pane > .tab-header-area > .tab-header-background {
-    -fx-background-color: #ececec;
-}
-
-.tab-pane > .tab-content-area {
-    -fx-background-color: #ffffff;
-    -fx-padding: 0;
+    -fx-border-color: transparent transparent transparent #0078d4;
 }
 
 /* --- Table view --- */

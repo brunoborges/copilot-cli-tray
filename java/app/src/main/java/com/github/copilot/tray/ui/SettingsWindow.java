@@ -14,6 +14,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -48,7 +49,9 @@ public class SettingsWindow {
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
     private Stage stage;
-    private TabPane tabPane;
+    private StackPane contentArea;
+    private VBox sideBar;
+    private ToggleGroup navGroup;
 
     // Sessions tab — directory-first master-detail
     private ToggleGroup locationToggle;
@@ -108,7 +111,15 @@ public class SettingsWindow {
         Platform.runLater(() -> {
             if (stage == null) stage = createStage();
             refreshSessions(sessionManager.getSessions());
-            if (tabPane != null) tabPane.getSelectionModel().select(0);
+            // Select sessions nav button
+            if (navGroup != null && !navGroup.getToggles().isEmpty()) {
+                navGroup.getToggles().getFirst().setSelected(true);
+                // Show sessions page
+                if (contentArea != null) {
+                    var pages = contentArea.getChildren();
+                    for (int i = 0; i < pages.size(); i++) pages.get(i).setVisible(i == 0);
+                }
+            }
             stage.show();
             stage.toFront();
         });
@@ -121,15 +132,39 @@ public class SettingsWindow {
     }
 
     private Stage createStage() {
-        tabPane = new TabPane();
-        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        tabPane.getTabs().addAll(
-                createSessionsTab(),
-                createPruneTab(),
-                createPreferencesTab(),
-                createAboutTab()
-        );
-        var scene = new Scene(tabPane, 1100, 800);
+        // Content pages
+        var sessionsPage = createSessionsContent();
+        var prunePage = createPruneContent();
+        var prefsPage = createPreferencesContent();
+        var aboutPage = createAboutContent();
+
+        contentArea = new StackPane(sessionsPage, prunePage, prefsPage, aboutPage);
+        // Only show the selected page
+        prunePage.setVisible(false);
+        prefsPage.setVisible(false);
+        aboutPage.setVisible(false);
+
+        // Sidebar navigation
+        navGroup = new ToggleGroup();
+        var sessionsBtn = createNavButton("Sessions", "⊞", sessionsPage);
+        var pruneBtn = createNavButton("Prune", "⌫", prunePage);
+        var prefsBtn = createNavButton("Preferences", "⚙", prefsPage);
+        var aboutBtn = createNavButton("About", "ⓘ", aboutPage);
+
+        sessionsBtn.setSelected(true);
+
+        sideBar = new VBox(0, sessionsBtn, pruneBtn, prefsBtn);
+        sideBar.getStyleClass().add("activity-bar");
+
+        // About button pinned to bottom
+        var spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        sideBar.getChildren().addAll(spacer, aboutBtn);
+
+        var root = new HBox(sideBar, contentArea);
+        HBox.setHgrow(contentArea, Priority.ALWAYS);
+
+        var scene = new Scene(root, 1100, 800);
         themeManager.register(scene);
         var s = new Stage();
         s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
@@ -142,11 +177,27 @@ public class SettingsWindow {
         return s;
     }
 
+    private ToggleButton createNavButton(String tooltip, String icon, Node page) {
+        var btn = new ToggleButton(icon);
+        btn.setToggleGroup(navGroup);
+        btn.getStyleClass().add("nav-button");
+        btn.setTooltip(new Tooltip(tooltip));
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setOnAction(e -> {
+            // Prevent deselecting
+            if (!btn.isSelected()) { btn.setSelected(true); return; }
+            for (var child : contentArea.getChildren()) {
+                child.setVisible(child == page);
+            }
+        });
+        return btn;
+    }
+
     // =====================================================================
     // Sessions Tab — Directory-first master-detail
     // =====================================================================
 
-    private Tab createSessionsTab() {
+    private Node createSessionsContent() {
         // --- Top: Local / Remote toggle ---
         var localBtn = new ToggleButton("Local");
         var remoteBtn = new ToggleButton("Remote");
@@ -422,7 +473,7 @@ public class SettingsWindow {
         split.setDividerPositions(0.20);
         SplitPane.setResizableWithParent(leftBox, false);
 
-        return new Tab("Sessions", split);
+        return split;
     }
 
     @SuppressWarnings("unchecked")
@@ -986,16 +1037,16 @@ public class SettingsWindow {
     // Prune Tab
     // =====================================================================
 
-    private Tab createPruneTab() {
+    private Node createPruneContent() {
         var prunePanel = new PrunePanel(new com.github.copilot.tray.session.SessionPruner(), resumeHandler);
-        return new Tab("Prune", prunePanel);
+        return prunePanel;
     }
 
     // =====================================================================
     // Preferences Tab
     // =====================================================================
 
-    private Tab createPreferencesTab() {
+    private Node createPreferencesContent() {
         var config = configStore.getConfig();
         var grid = new GridPane();
         grid.setPadding(new Insets(15));
@@ -1041,7 +1092,7 @@ public class SettingsWindow {
         saveButton.setOnAction(e -> savePreferences());
         grid.add(saveButton, 1, row);
 
-        return new Tab("Preferences", grid);
+        return grid;
     }
 
     private void savePreferences() {
@@ -1067,7 +1118,7 @@ public class SettingsWindow {
     // About Tab
     // =====================================================================
 
-    private Tab createAboutTab() {
+    private Node createAboutContent() {
         var content = new VBox(10);
         content.setPadding(new Insets(15));
 
@@ -1148,7 +1199,7 @@ public class SettingsWindow {
 
         var scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
-        return new Tab("About", scrollPane);
+        return scrollPane;
     }
 
     private Label createSectionHeader(String text) {

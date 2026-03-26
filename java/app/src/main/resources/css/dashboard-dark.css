@@ -72,51 +72,40 @@
     -fx-padding: 0 1 0 1;
 }
 
-/* --- Tab pane (VS Code activity-bar style) --- */
+/* --- Activity bar (sidebar navigation) --- */
 
-.tab-pane {
-    -fx-tab-min-height: 32;
-}
-
-.tab-pane > .tab-header-area {
+.activity-bar {
     -fx-background-color: #181828;
-    -fx-padding: 0;
+    -fx-padding: 4 0 4 0;
+    -fx-pref-width: 48;
+    -fx-min-width: 48;
+    -fx-max-width: 48;
+    -fx-border-color: transparent #2b2b3e transparent transparent;
+    -fx-border-width: 0 1 0 0;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab {
-    -fx-background-color: #252538;
+.nav-button {
+    -fx-background-color: transparent;
     -fx-background-radius: 0;
-    -fx-padding: 8 18;
+    -fx-text-fill: #6e6e8a;
+    -fx-font-size: 20px;
+    -fx-padding: 12 0;
+    -fx-cursor: hand;
+    -fx-pref-width: 48;
+    -fx-min-width: 48;
+    -fx-max-width: 48;
+    -fx-alignment: center;
     -fx-border-color: transparent transparent transparent transparent;
-    -fx-border-width: 0 0 2 0;
+    -fx-border-width: 0 0 0 2;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: #1e1e2e;
-    -fx-border-color: transparent transparent #0078d4 transparent;
-}
-
-.tab-pane > .tab-header-area > .headers-region > .tab:hover {
-    -fx-background-color: #2a2a3e;
-}
-
-.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+.nav-button:hover {
     -fx-text-fill: #b0b0c4;
-    -fx-font-size: 13px;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+.nav-button:selected {
     -fx-text-fill: #e0e0e0;
-    -fx-font-weight: normal;
-}
-
-.tab-pane > .tab-header-area > .tab-header-background {
-    -fx-background-color: #181828;
-}
-
-.tab-pane > .tab-content-area {
-    -fx-background-color: #1e1e2e;
-    -fx-padding: 0;
+    -fx-border-color: transparent transparent transparent #0078d4;
 }
 
 /* --- Table view --- */
