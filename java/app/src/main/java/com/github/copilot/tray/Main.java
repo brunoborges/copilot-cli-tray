@@ -15,6 +15,8 @@ public class Main extends Application {
     public static void main(String[] args) {
         // Set macOS dock name (must be set before AWT/JavaFX initializes)
         System.setProperty("apple.awt.application.name", "Copilot Agentic Tray");
+        // Use fork-based process launch to avoid JDK 25 posix_spawn helper issues
+        System.setProperty("jdk.lang.Process.launchMechanism", "FORK");
         launch(args);
     }
 
