@@ -416,7 +416,8 @@ public class SettingsWindow {
         rightBox = new VBox(topPane, bottomPaneSplit, actionPane);
 
         var split = new SplitPane(leftBox, rightBox);
-        split.setDividerPositions(0.28);
+        split.setDividerPositions(0.20);
+        SplitPane.setResizableWithParent(leftBox, false);
 
         return new Tab("Sessions", split);
     }
