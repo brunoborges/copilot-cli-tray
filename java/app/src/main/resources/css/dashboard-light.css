@@ -183,6 +183,7 @@
     -fx-text-fill: #333333;
     -fx-font-size: 12px;
     -fx-padding: 0 8 0 8;
+    -fx-alignment: CENTER-LEFT;
 }
 
 .table-view .table-row-cell:selected .table-cell {

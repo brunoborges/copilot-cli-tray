@@ -193,6 +193,7 @@
     -fx-text-fill: #e0e0e0;
     -fx-font-size: 12px;
     -fx-padding: 0 8 0 8;
+    -fx-alignment: CENTER-LEFT;
     -fx-text-background-color: #e0e0e0;
 }
 
