@@ -163,8 +163,8 @@ public class SettingsWindow {
                 refreshSessions(sessionManager.getSessions());
             }
         });
-        var toggleBar = new HBox(4, localBtn, remoteBtn);
-        toggleBar.setPadding(new Insets(6));
+        var toggleBar = new HBox(6, localBtn, remoteBtn);
+        toggleBar.setPadding(new Insets(8, 10, 8, 10));
         toggleBar.setAlignment(Pos.CENTER_LEFT);
 
         // --- Left: directory tree ---
@@ -233,7 +233,7 @@ public class SettingsWindow {
         var placeholderLabel = new Label("Select a session to view details.");
         placeholderLabel.getStyleClass().add("placeholder-label");
         detailPane = new VBox(placeholderLabel);
-        detailPane.setPadding(new Insets(10));
+        detailPane.setPadding(new Insets(12));
 
         // Usage tiles pane (local only)
         usageTilesPane = new UsageTilesPane();
@@ -368,7 +368,7 @@ public class SettingsWindow {
 
         actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn,
                 viewLogsBtn, followLogsBtn, openBrowserBtn, openPrBtn);
-        actionBar.setPadding(new Insets(6));
+        actionBar.getStyleClass().add("action-bar");
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
