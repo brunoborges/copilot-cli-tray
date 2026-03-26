@@ -46,7 +46,6 @@ public class TrayApplication {
         this.ghCliRunner = new GhCliRunner();
         this.remotePoller = new RemoteSessionPoller(ghCliRunner, sessionManager);
         this.themeManager = new ThemeManager();
-        this.themeManager.setTheme(configStore.getConfig().getTheme());
         this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge, ghCliRunner,
                 remotePoller, themeManager,
                 sessionId -> {
@@ -83,6 +82,9 @@ public class TrayApplication {
         // Load configuration
         configStore.load();
         var config = configStore.getConfig();
+
+        // Apply saved theme (must happen after config is loaded from disk)
+        themeManager.setTheme(config.getTheme());
 
         // Install system tray icon
         trayManager.install();
