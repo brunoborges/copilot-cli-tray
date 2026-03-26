@@ -77,7 +77,8 @@ public class TerminalLauncher {
                 if (workingDirectory != null && !workingDirectory.isEmpty()) {
                     writer.write("cd " + escapeShell(workingDirectory) + "\n");
                 }
-                writer.write(shellCmd + "\n");
+                writer.write("clear\n");
+                writer.write("exec " + shellCmd + "\n");
             }
             tmp.setExecutable(true);
             return List.of("open", tmp.getAbsolutePath());
