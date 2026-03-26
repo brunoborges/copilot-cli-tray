@@ -77,9 +77,9 @@
 .activity-bar {
     -fx-background-color: #181828;
     -fx-padding: 4 0 4 0;
-    -fx-pref-width: 48;
-    -fx-min-width: 48;
-    -fx-max-width: 48;
+    -fx-pref-width: 64;
+    -fx-min-width: 64;
+    -fx-max-width: 64;
     -fx-border-color: transparent #2b2b3e transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
@@ -87,25 +87,50 @@
 .nav-button {
     -fx-background-color: transparent;
     -fx-background-radius: 0;
-    -fx-text-fill: #6e6e8a;
-    -fx-font-size: 20px;
-    -fx-padding: 12 0;
+    -fx-padding: 10 0;
     -fx-cursor: hand;
-    -fx-pref-width: 48;
-    -fx-min-width: 48;
-    -fx-max-width: 48;
+    -fx-pref-width: 64;
+    -fx-min-width: 64;
+    -fx-max-width: 64;
     -fx-alignment: center;
     -fx-border-color: transparent transparent transparent transparent;
     -fx-border-width: 0 0 0 2;
 }
 
 .nav-button:hover {
-    -fx-text-fill: #b0b0c4;
+    -fx-background-color: #252538;
 }
 
 .nav-button:selected {
-    -fx-text-fill: #e0e0e0;
     -fx-border-color: transparent transparent transparent #0078d4;
+    -fx-background-color: #1e1e2e;
+}
+
+.nav-icon {
+    -fx-fill: #6e6e8a;
+    -fx-scale-x: 0.85;
+    -fx-scale-y: 0.85;
+}
+
+.nav-button:hover .nav-icon {
+    -fx-fill: #b0b0c4;
+}
+
+.nav-button:selected .nav-icon {
+    -fx-fill: #e0e0e0;
+}
+
+.nav-label {
+    -fx-text-fill: #6e6e8a;
+    -fx-font-size: 9px;
+}
+
+.nav-button:hover .nav-label {
+    -fx-text-fill: #b0b0c4;
+}
+
+.nav-button:selected .nav-label {
+    -fx-text-fill: #e0e0e0;
 }
 
 /* --- Table view --- */

@@ -146,10 +146,20 @@ public class SettingsWindow {
 
         // Sidebar navigation
         navGroup = new ToggleGroup();
-        var sessionsBtn = createNavButton("Sessions", "⊞", sessionsPage);
-        var pruneBtn = createNavButton("Prune", "⌫", prunePage);
-        var prefsBtn = createNavButton("Preferences", "⚙", prefsPage);
-        var aboutBtn = createNavButton("About", "ⓘ", aboutPage);
+        // SVG path data for nav icons
+        // Sessions: list/grid icon
+        var sessionsIcon = "M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z";
+        // Prune: trash icon
+        var pruneIcon = "M9 3v1H4v2h1v10a2 2 0 002 2h6a2 2 0 002-2V6h1V4h-5V3H9zM7 8v8h2V8H7zm4 0v8h2V8h-2z";
+        // Preferences: gear icon
+        var prefsIcon = "M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96a7.04 7.04 0 00-1.62-.94l-.36-2.54A.48.48 0 0013.93 2h-3.86a.48.48 0 00-.48.41l-.36 2.54a7.04 7.04 0 00-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.71 8.47a.49.49 0 00.12.61l2.03 1.58a7.07 7.07 0 000 1.88l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.69 1.62.94l.36 2.54c.05.24.26.41.48.41h3.86c.22 0 .43-.17.48-.41l.36-2.54a7.04 7.04 0 001.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 00-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z";
+        // About: info circle icon
+        var aboutIcon = "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z";
+
+        var sessionsBtn = createNavButton("Sessions", sessionsIcon, sessionsPage);
+        var pruneBtn = createNavButton("Prune", pruneIcon, prunePage);
+        var prefsBtn = createNavButton("Preferences", prefsIcon, prefsPage);
+        var aboutBtn = createNavButton("About", aboutIcon, aboutPage);
 
         sessionsBtn.setSelected(true);
 
@@ -177,11 +187,23 @@ public class SettingsWindow {
         return s;
     }
 
-    private ToggleButton createNavButton(String tooltip, String icon, Node page) {
-        var btn = new ToggleButton(icon);
+    private ToggleButton createNavButton(String label, String svgPathData, Node page) {
+        var svgIcon = new javafx.scene.shape.SVGPath();
+        svgIcon.setContent(svgPathData);
+        svgIcon.getStyleClass().add("nav-icon");
+
+        var textLabel = new Label(label);
+        textLabel.getStyleClass().add("nav-label");
+
+        var content = new VBox(2, svgIcon, textLabel);
+        content.setAlignment(Pos.CENTER);
+        content.setMouseTransparent(true);
+
+        var btn = new ToggleButton();
+        btn.setGraphic(content);
         btn.setToggleGroup(navGroup);
         btn.getStyleClass().add("nav-button");
-        btn.setTooltip(new Tooltip(tooltip));
+        btn.setTooltip(new Tooltip(label));
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setOnAction(e -> {
             // Prevent deselecting
