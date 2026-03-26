@@ -65,6 +65,7 @@ public class SettingsWindow {
     private Spinner<Integer> warningThresholdSpinner;
     private CheckBox notificationsCheckBox;
     private CheckBox autoStartCheckBox;
+    private CheckBox openDashboardOnStartupCheckBox;
 
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
                           SdkBridge sdkBridge,
@@ -296,7 +297,11 @@ public class SettingsWindow {
                         }
                     });
         });
-        actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn);
+        var heightLabel = new Label("h: --");
+        heightLabel.setStyle("-fx-text-fill: yellow; -fx-font-size: 11;");
+        bottomPaneSplit.heightProperty().addListener((_, _, h) ->
+                heightLabel.setText("h: %.0f".formatted(h.doubleValue())));
+        actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn, heightLabel);
         actionBar.setPadding(new Insets(6));
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
@@ -729,6 +734,11 @@ public class SettingsWindow {
         autoStartCheckBox.setSelected(config.isAutoStart());
         grid.add(autoStartCheckBox, 1, row++);
 
+        grid.add(new Label("Open Dashboard on Startup:"), 0, row);
+        openDashboardOnStartupCheckBox = new CheckBox();
+        openDashboardOnStartupCheckBox.setSelected(config.isOpenDashboardOnStartup());
+        grid.add(openDashboardOnStartupCheckBox, 1, row++);
+
         var saveButton = new Button("Save");
         saveButton.setOnAction(e -> savePreferences());
         grid.add(saveButton, 1, row);
@@ -743,6 +753,7 @@ public class SettingsWindow {
         config.setContextWarningThreshold(warningThresholdSpinner.getValue());
         config.setNotificationsEnabled(notificationsCheckBox.isSelected());
         config.setAutoStart(autoStartCheckBox.isSelected());
+        config.setOpenDashboardOnStartup(openDashboardOnStartupCheckBox.isSelected());
         configStore.save();
     }
 

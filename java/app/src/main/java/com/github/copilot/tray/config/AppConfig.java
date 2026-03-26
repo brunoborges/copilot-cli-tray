@@ -15,6 +15,7 @@ public class AppConfig {
     private String theme = "system";
     private String logLevel = "INFO";
     private boolean autoStart = false;
+    private boolean openDashboardOnStartup = false;
 
     public AppConfig() {}
 
@@ -38,4 +39,7 @@ public class AppConfig {
 
     public boolean isAutoStart() { return autoStart; }
     public void setAutoStart(boolean autoStart) { this.autoStart = autoStart; }
+
+    public boolean isOpenDashboardOnStartup() { return openDashboardOnStartup; }
+    public void setOpenDashboardOnStartup(boolean openDashboardOnStartup) { this.openDashboardOnStartup = openDashboardOnStartup; }
 }

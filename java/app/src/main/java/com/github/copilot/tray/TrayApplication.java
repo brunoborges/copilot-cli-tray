@@ -85,6 +85,11 @@ public class TrayApplication {
         sessionManager.addChangeListener(notifier::onSessionChange);
         sessionManager.addChangeListener(settingsWindow::onSessionChange);
 
+        // Open dashboard on startup if configured
+        if (config.isOpenDashboardOnStartup()) {
+            javafx.application.Platform.runLater(settingsWindow::show);
+        }
+
         // Connect to Copilot CLI
         sdkBridge.connect(metadataList -> {
             // Reconcile session list from SDK with our state
