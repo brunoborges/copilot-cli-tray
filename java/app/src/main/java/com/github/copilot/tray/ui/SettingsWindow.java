@@ -75,7 +75,7 @@ public class SettingsWindow {
     private ScrollPane detailScroll;
     private VBox rightBox;
 
-    // Preferences tab controls
+    // Settings tab controls
     private TextField cliPathField;
     private Spinner<Integer> pollIntervalSpinner;
     private Spinner<Integer> warningThresholdSpinner;
@@ -135,7 +135,7 @@ public class SettingsWindow {
         // Content pages
         var sessionsPage = createSessionsContent();
         var prunePage = createPruneContent();
-        var prefsPage = createPreferencesContent();
+        var prefsPage = createSettingsContent();
         var aboutPage = createAboutContent();
 
         contentArea = new StackPane(sessionsPage, prunePage, prefsPage, aboutPage);
@@ -151,14 +151,14 @@ public class SettingsWindow {
         var sessionsIcon = "M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z";
         // Prune: trash icon
         var pruneIcon = "M9 3v1H4v2h1v10a2 2 0 002 2h6a2 2 0 002-2V6h1V4h-5V3H9zM7 8v8h2V8H7zm4 0v8h2V8h-2z";
-        // Preferences: gear icon (MDI cog – explicit separators for JavaFX)
+        // Settings: gear icon (MDI cog – explicit separators for JavaFX)
         var prefsIcon = "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.48,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z";
         // About: info circle icon
         var aboutIcon = "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z";
 
         var sessionsBtn = createNavButton("Sessions", sessionsIcon, sessionsPage);
         var pruneBtn = createNavButton("Prune", pruneIcon, prunePage);
-        var prefsBtn = createNavButton("Preferences", prefsIcon, prefsPage);
+        var prefsBtn = createNavButton("Settings", prefsIcon, prefsPage);
         var aboutBtn = createNavButton("About", aboutIcon, aboutPage);
 
         sessionsBtn.setSelected(true);
@@ -166,7 +166,7 @@ public class SettingsWindow {
         sideBar = new VBox(0, sessionsBtn, pruneBtn);
         sideBar.getStyleClass().add("activity-bar");
 
-        // Preferences and About pinned to bottom
+        // Settings and About pinned to bottom
         var spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sideBar.getChildren().addAll(spacer, prefsBtn, aboutBtn);
@@ -1072,10 +1072,10 @@ public class SettingsWindow {
     }
 
     // =====================================================================
-    // Preferences Tab
+    // Settings Tab
     // =====================================================================
 
-    private Node createPreferencesContent() {
+    private Node createSettingsContent() {
         var config = configStore.getConfig();
         var grid = new GridPane();
         grid.setPadding(new Insets(15));
@@ -1118,13 +1118,13 @@ public class SettingsWindow {
         grid.add(openDashboardOnStartupCheckBox, 1, row++);
 
         var saveButton = new Button("Save");
-        saveButton.setOnAction(e -> savePreferences());
+        saveButton.setOnAction(e -> saveSettings());
         grid.add(saveButton, 1, row);
 
         return grid;
     }
 
-    private void savePreferences() {
+    private void saveSettings() {
         var config = configStore.getConfig();
         var selectedTheme = themeCombo.getValue().toLowerCase();
         config.setTheme(selectedTheme);
