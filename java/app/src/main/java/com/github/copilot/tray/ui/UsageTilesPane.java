@@ -27,10 +27,9 @@ public class UsageTilesPane extends VBox {
     private static final double TILE_H = 150;
     private static final double SMALL_H = 110;
 
-    private static final Color COLOR_SYSTEM = Color.web("#7b8cde");
-    private static final Color COLOR_MSGS   = Color.web("#c0c0c0");
-    private static final Color COLOR_FREE   = Color.web("#4a4a6a");
-    private static final Color COLOR_BUFFER = Color.web("#8a8aaa");
+    private static final Color COLOR_SYSTEM    = Color.web("#7b8cde");
+    private static final Color COLOR_MSGS      = Color.web("#c0c0c0");
+    private static final Color COLOR_AVAILABLE = Color.web("#4a4a6a");
 
     // Donut chart data
     private final ChartData systemToolsData;
@@ -44,8 +43,7 @@ public class UsageTilesPane extends VBox {
     // Breakdown tiles
     private final Tile systemToolsTile;
     private final Tile messagesTokTile;
-    private final Tile freeSpaceTile;
-    private final Tile bufferTile;
+    private final Tile availableTile;
 
     // Aggregate tiles
     private final Tile totalSessionsTile;
@@ -87,10 +85,9 @@ public class UsageTilesPane extends VBox {
                 .textSize(Tile.TextSize.SMALLER)
                 .build();
 
-        systemToolsTile = buildBreakdownTile("System/Tools", COLOR_SYSTEM);
-        messagesTokTile = buildBreakdownTile("Messages", COLOR_MSGS);
-        freeSpaceTile   = buildBreakdownTile("Free Space", COLOR_FREE);
-        bufferTile      = buildBreakdownTile("Buffer", COLOR_BUFFER);
+        systemToolsTile = buildBreakdownTile(COLOR_SYSTEM);
+        messagesTokTile = buildBreakdownTile(COLOR_MSGS);
+        availableTile   = buildBreakdownTile(COLOR_AVAILABLE);
 
         totalSessionsTile = buildAggregateTile("Total Sessions");
         activeSessionsTile = buildAggregateTile("Active Sessions");
@@ -115,13 +112,10 @@ public class UsageTilesPane extends VBox {
         var messagesCol = new VBox(4, tileLabel("Messages"), messagesTokTile);
         messagesCol.setAlignment(Pos.CENTER_LEFT);
 
-        var freeSpaceCol = new VBox(4, tileLabel("Free Space"), freeSpaceTile);
-        freeSpaceCol.setAlignment(Pos.CENTER_LEFT);
+        var availableCol = new VBox(4, tileLabel("Available"), availableTile);
+        availableCol.setAlignment(Pos.CENTER_LEFT);
 
-        var bufferCol = new VBox(4, tileLabel("Buffer"), bufferTile);
-        bufferCol.setAlignment(Pos.CENTER_LEFT);
-
-        var breakdownRow = new HBox(6, sysToolsCol, messagesCol, freeSpaceCol, bufferCol);
+        var breakdownRow = new HBox(6, sysToolsCol, messagesCol, availableCol);
         breakdownRow.setAlignment(Pos.CENTER_LEFT);
 
         aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
@@ -177,10 +171,8 @@ public class UsageTilesPane extends VBox {
         systemToolsTile.setDescription(formatTokens(u.systemToolsTokens()));
         messagesTokTile.setValue(u.messagesPercent());
         messagesTokTile.setDescription(formatTokens(u.messagesTokens()));
-        freeSpaceTile.setValue(u.freeSpacePercent());
-        freeSpaceTile.setDescription(formatTokens(u.freeSpaceTokens()));
-        bufferTile.setValue(u.bufferPercent());
-        bufferTile.setDescription(formatTokens(u.bufferTokens()));
+        availableTile.setValue(u.availablePercent());
+        availableTile.setDescription(formatTokens(u.availableTokens()));
     }
 
     private void updateAggregateDetailTiles(List<SessionSnapshot> selected) {
@@ -197,16 +189,13 @@ public class UsageTilesPane extends VBox {
 
         int sysTokSum = selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum();
         int msgTokSum = selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum();
-        int freeTokSum = selected.stream().mapToInt(s -> s.usage().freeSpaceTokens()).sum();
-        int bufTokSum = selected.stream().mapToInt(s -> s.usage().bufferTokens()).sum();
+        int availSum = selected.stream().mapToInt(s -> s.usage().availableTokens()).sum();
         systemToolsTile.setValue(0);
         systemToolsTile.setDescription(formatTokens(sysTokSum));
         messagesTokTile.setValue(0);
         messagesTokTile.setDescription(formatTokens(msgTokSum));
-        freeSpaceTile.setValue(0);
-        freeSpaceTile.setDescription(formatTokens(freeTokSum));
-        bufferTile.setValue(0);
-        bufferTile.setDescription(formatTokens(bufTokSum));
+        availableTile.setValue(0);
+        availableTile.setDescription(formatTokens(availSum));
     }
 
     private void clearDetailTiles() {
@@ -215,7 +204,7 @@ public class UsageTilesPane extends VBox {
         contextGauge.setValue(0);
         tokenCountTile.setValue(0);
         tokenCountTile.setDescription("of 0");
-        for (var tile : List.of(systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile)) {
+        for (var tile : List.of(systemToolsTile, messagesTokTile, availableTile)) {
             tile.setValue(0);
             tile.setDescription("");
         }
@@ -231,7 +220,7 @@ public class UsageTilesPane extends VBox {
 
     // --- Factory helpers ---
 
-    private Tile buildBreakdownTile(String title, Color color) {
+    private Tile buildBreakdownTile(Color color) {
         return TileBuilder.create()
                 .skinType(Tile.SkinType.PERCENTAGE)
                 .prefSize(TILE_W, SMALL_H)

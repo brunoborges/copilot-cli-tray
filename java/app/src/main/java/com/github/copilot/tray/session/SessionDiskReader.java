@@ -67,25 +67,22 @@ public final class SessionDiskReader {
                 int limit = DEFAULT_TOKEN_LIMIT;
                 int sysTools = systemTokens + toolDefinitionsTokens;
                 int msgs = conversationTokens;
-                int buffer = Math.max(0, limit - currentTokens);
                 return new UsageSnapshot(currentTokens, limit, userMessages + assistantMessages,
-                        userMessages, assistantMessages, sysTools, msgs, buffer);
+                        userMessages, assistantMessages, sysTools, msgs);
             }
             if (conversationTokens > 0) {
                 int total = conversationTokens + systemTokens + toolDefinitionsTokens;
                 int limit = DEFAULT_TOKEN_LIMIT;
-                int buffer = Math.max(0, limit - total);
                 return new UsageSnapshot(total, limit, userMessages + assistantMessages,
                         userMessages, assistantMessages,
-                        systemTokens + toolDefinitionsTokens, conversationTokens, buffer);
+                        systemTokens + toolDefinitionsTokens, conversationTokens);
             }
             int estimatedTokens = (userMessages + assistantMessages) * 800;
             int limit = DEFAULT_TOKEN_LIMIT;
-            int buffer = (int) (limit * 0.20);
             int sysTools = (int) (estimatedTokens * 0.30);
             int msgs = estimatedTokens - sysTools;
             return new UsageSnapshot(estimatedTokens, limit, userMessages + assistantMessages,
-                    userMessages, assistantMessages, sysTools, msgs, buffer);
+                    userMessages, assistantMessages, sysTools, msgs);
         }
 
         public static final DiskStats EMPTY = new DiskStats(0, 0, 0, "", "", "", 0, 0, 0, 0);
