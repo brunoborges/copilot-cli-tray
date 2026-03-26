@@ -48,6 +48,7 @@ public class SettingsWindow {
     private final ThemeManager themeManager;
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
+    private final Runnable newSessionHandler;
     private Stage stage;
     private StackPane contentArea;
     private VBox sideBar;
@@ -61,7 +62,7 @@ public class SettingsWindow {
     private GridPane detailGrid;
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
-    private Button resumeBtn, attachBtn, renameBtn, deleteBtn;
+    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn;
     // Remote-specific action buttons
     private Button viewLogsBtn, openBrowserBtn, openPrBtn, openRepoBtn;
     private SessionSnapshot selectedSession;
@@ -87,7 +88,8 @@ public class SettingsWindow {
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
                           SdkBridge sdkBridge, GhCliRunner ghCliRunner,
                           RemoteSessionPoller remotePoller, ThemeManager themeManager,
-                          Consumer<String> deleteHandler, Consumer<String> resumeHandler) {
+                          Consumer<String> deleteHandler, Consumer<String> resumeHandler,
+                          Runnable newSessionHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
         this.sdkBridge = sdkBridge;
@@ -96,6 +98,7 @@ public class SettingsWindow {
         this.themeManager = themeManager;
         this.deleteHandler = deleteHandler;
         this.resumeHandler = resumeHandler;
+        this.newSessionHandler = newSessionHandler;
     }
 
     public void show() {
@@ -340,7 +343,9 @@ public class SettingsWindow {
         bottomPaneSplit.setDividerPositions(0.30);
         SplitPane.setResizableWithParent(usageTilesPane, false);
 
-        resumeBtn = new Button("Resume in Terminal");
+        newSessionBtn = new Button("New Session");
+        newSessionBtn.setOnAction(e -> newSessionHandler.run());
+        resumeBtn = new Button("Resume");
         resumeBtn.setDisable(true);
         resumeBtn.setOnAction(e -> { if (selectedSession != null) resumeHandler.accept(selectedSession.id()); });
         attachBtn = new Button("Attach");
@@ -481,7 +486,7 @@ public class SettingsWindow {
             });
         });
 
-        actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn,
+        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.getStyleClass().add("action-bar");
 
@@ -803,6 +808,8 @@ public class SettingsWindow {
         boolean multi = selectionCount > 1;
         boolean remote = isRemoteSelected();
         // Local actions
+        newSessionBtn.setVisible(!remote);
+        newSessionBtn.setManaged(!remote);
         resumeBtn.setVisible(!remote);
         resumeBtn.setManaged(!remote);
         attachBtn.setVisible(!remote);

@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 
@@ -113,7 +114,13 @@ public class UsageTilesPane extends VBox {
         var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile, tokensLegend);
         donutCol.setAlignment(Pos.CENTER_LEFT);
 
-        var contextCol = new VBox(4, tileLabel("Context Used"), contextGauge);
+        // Add a spacer below the context gauge matching legend height so tiles align
+        var contextSpacer = new Region();
+        tokensLegend.heightProperty().addListener((obs, oldH, newH) ->
+                contextSpacer.setPrefHeight(newH.doubleValue()));
+        // initial measurement after layout
+        contextSpacer.setPrefHeight(18); // reasonable default until first layout pass
+        var contextCol = new VBox(4, tileLabel("Context Used"), contextGauge, contextSpacer);
         contextCol.setAlignment(Pos.CENTER_LEFT);
 
         var msgsLegend = new HBox(12,

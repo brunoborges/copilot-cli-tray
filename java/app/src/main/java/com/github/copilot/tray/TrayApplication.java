@@ -68,7 +68,8 @@ public class TrayApplication {
                         dir = stats.workingDirectory();
                     }
                     terminalLauncher.resumeSession(sessionId, dir);
-                });
+                },
+                terminalLauncher::newSession);
         this.trayManager = new TrayManager(sessionManager, sdkBridge,
                 terminalLauncher, settingsWindow::show, settingsWindow::showSessionsTab);
     }
