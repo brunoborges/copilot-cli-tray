@@ -48,7 +48,7 @@ public class SettingsWindow {
     private final ThemeManager themeManager;
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
-    private final Runnable newSessionHandler;
+    private final Consumer<String> newSessionHandler;
     private Stage stage;
     private StackPane contentArea;
     private VBox sideBar;
@@ -89,7 +89,7 @@ public class SettingsWindow {
                           SdkBridge sdkBridge, GhCliRunner ghCliRunner,
                           RemoteSessionPoller remotePoller, ThemeManager themeManager,
                           Consumer<String> deleteHandler, Consumer<String> resumeHandler,
-                          Runnable newSessionHandler) {
+                          Consumer<String> newSessionHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
         this.sdkBridge = sdkBridge;
@@ -344,7 +344,10 @@ public class SettingsWindow {
         SplitPane.setResizableWithParent(usageTilesPane, false);
 
         newSessionBtn = new Button("New Session");
-        newSessionBtn.setOnAction(e -> newSessionHandler.run());
+        newSessionBtn.setOnAction(e -> {
+            String dir = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
+            newSessionHandler.accept(dir);
+        });
         resumeBtn = new Button("Resume");
         resumeBtn.setDisable(true);
         resumeBtn.setOnAction(e -> { if (selectedSession != null) resumeHandler.accept(selectedSession.id()); });

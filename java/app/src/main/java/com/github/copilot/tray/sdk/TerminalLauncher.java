@@ -28,9 +28,17 @@ public class TerminalLauncher {
      * Open a new terminal window running a fresh {@code copilot} session.
      */
     public void newSession() {
+        newSession(null);
+    }
+
+    /**
+     * Open a new terminal window running a fresh {@code copilot} session
+     * in the given working directory.
+     */
+    public void newSession(String workingDirectory) {
         var command = buildCommand("copilot --banner", null);
-        LOG.info("Launching new terminal session: {}", command);
-        launch(command, null);
+        LOG.info("Launching new terminal session in {}: {}", workingDirectory, command);
+        launch(command, workingDirectory);
     }
 
     private void launch(List<String> command, String workingDirectory) {
