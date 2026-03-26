@@ -204,8 +204,15 @@ public class SettingsWindow {
                     sessionTable.getSelectionModel().clearSelection();
                 }
             });
-            // Force CSS recomputation on selection change to fix text color caching
-            tableRow.selectedProperty().addListener((obs, was, is) -> tableRow.applyCss());
+            // Force text color via inline style to bypass JavaFX CSS caching bugs
+            tableRow.selectedProperty().addListener((obs, was, is) -> {
+                if (is) {
+                    tableRow.setStyle("-fx-text-background-color: #ffffff;");
+                } else {
+                    tableRow.setStyle("-fx-text-background-color: " + getTableTextColor() + ";");
+                }
+            });
+            tableRow.setStyle("-fx-text-background-color: " + getTableTextColor() + ";");
             return tableRow;
         });
         sessionTable.getSelectionModel().getSelectedItems()
@@ -948,6 +955,10 @@ public class SettingsWindow {
         if (n >= 1_000_000) return String.format("%.1fM", n / 1_000_000.0);
         if (n >= 1_000) return String.format("%.1fk", n / 1_000.0);
         return String.valueOf(n);
+    }
+
+    private String getTableTextColor() {
+        return "dark".equals(themeManager.getCurrentTheme()) ? "#e0e0e0" : "#1e1e1e";
     }
 
     // =====================================================================
