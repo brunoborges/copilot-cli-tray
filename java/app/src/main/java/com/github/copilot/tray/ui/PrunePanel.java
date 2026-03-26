@@ -138,7 +138,9 @@ public class PrunePanel extends VBox {
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
         selectCol.setCellValueFactory(cd -> getSelectionProperty(cd.getValue().sessionId()));
         selectCol.setCellFactory(col -> new CheckBoxCell());
-        selectCol.setPrefWidth(35);
+        selectCol.setPrefWidth(40);
+        selectCol.setMinWidth(40);
+        selectCol.setMaxWidth(40);
         selectCol.setSortable(false);
 
         // Session ID
@@ -272,7 +274,9 @@ public class PrunePanel extends VBox {
             return new SimpleStringProperty(null);
         });
         selectCol.setCellFactory(col -> new TreeCheckBoxCell());
-        selectCol.setPrefWidth(55);
+        selectCol.setPrefWidth(40);
+        selectCol.setMinWidth(40);
+        selectCol.setMaxWidth(40);
         selectCol.setSortable(false);
 
         // Name / Directory (tree disclosure column)
@@ -826,8 +830,32 @@ public class PrunePanel extends VBox {
                     }
                 } else {
                     getSelectionProperty(boundId).set(val);
+                    // Sync parent directory checkbox
+                    syncParentCheckbox();
                 }
             });
+        }
+
+        /** Find the parent directory tree item and update its checkbox state. */
+        private void syncParentCheckbox() {
+            int idx = getIndex();
+            if (idx < 0) return;
+            var ti = treeTable.getTreeItem(idx);
+            if (ti == null || ti.getParent() == null) return;
+            var parent = ti.getParent();
+            // Parent is the directory group node — force its cell to refresh
+            if (parent.getValue() instanceof String) {
+                // Trigger a re-evaluation by updating the tree table
+                Platform.runLater(() -> {
+                    // Find all cells for the parent and update them
+                    // The simplest approach: refresh the column to force updateItem
+                    var cols = treeTable.getColumns();
+                    if (!cols.isEmpty()) {
+                        cols.getFirst().setVisible(false);
+                        cols.getFirst().setVisible(true);
+                    }
+                });
+            }
         }
 
         @Override
