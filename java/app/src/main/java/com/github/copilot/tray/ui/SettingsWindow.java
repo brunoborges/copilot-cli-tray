@@ -44,6 +44,7 @@ public class SettingsWindow {
     private final SdkBridge sdkBridge;
     private final GhCliRunner ghCliRunner;
     private final RemoteSessionPoller remotePoller;
+    private final ThemeManager themeManager;
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
     private Stage stage;
@@ -78,16 +79,18 @@ public class SettingsWindow {
     private CheckBox notificationsCheckBox;
     private CheckBox autoStartCheckBox;
     private CheckBox openDashboardOnStartupCheckBox;
+    private ComboBox<String> themeCombo;
 
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
                           SdkBridge sdkBridge, GhCliRunner ghCliRunner,
-                          RemoteSessionPoller remotePoller,
+                          RemoteSessionPoller remotePoller, ThemeManager themeManager,
                           Consumer<String> deleteHandler, Consumer<String> resumeHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
         this.sdkBridge = sdkBridge;
         this.ghCliRunner = ghCliRunner;
         this.remotePoller = remotePoller;
+        this.themeManager = themeManager;
         this.deleteHandler = deleteHandler;
         this.resumeHandler = resumeHandler;
     }
@@ -127,7 +130,7 @@ public class SettingsWindow {
                 createAboutTab()
         );
         var scene = new Scene(tabPane, 1100, 800);
-        scene.getStylesheets().add(getClass().getResource("/css/dashboard.css").toExternalForm());
+        themeManager.register(scene);
         var s = new Stage();
         s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
         s.setMinHeight(700);
@@ -255,7 +258,7 @@ public class SettingsWindow {
             var session = selectedSession;
             var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {
                 sdkBridge.detachSession(session.id());
-            });
+            }, themeManager);
             logWindow.show();
             sdkBridge.attachSession(session.id(), (sid, event) -> logWindow.onEvent(sid, event))
                     .thenRun(() -> Platform.runLater(() -> logWindow.appendLog("Attached — listening for events")))
@@ -328,7 +331,7 @@ public class SettingsWindow {
         viewLogsBtn.setOnAction(e -> {
             if (selectedSession == null || !selectedSession.remote()) return;
             var session = selectedSession;
-            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {});
+            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager);
             logWindow.show();
             ghCliRunner.getTaskLogs(session.id())
                     .thenAccept(logs -> Platform.runLater(() -> logWindow.appendLog(logs)));
@@ -338,7 +341,7 @@ public class SettingsWindow {
         followLogsBtn.setOnAction(e -> {
             if (selectedSession == null || !selectedSession.remote()) return;
             var session = selectedSession;
-            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {});
+            var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {}, themeManager);
             logWindow.show();
             try {
                 var process = ghCliRunner.followTaskLogs(session.id(),
@@ -966,6 +969,11 @@ public class SettingsWindow {
         grid.setVgap(10);
         int row = 0;
 
+        grid.add(new Label("Theme:"), 0, row);
+        themeCombo = new ComboBox<>(FXCollections.observableArrayList("System", "Dark", "Light"));
+        themeCombo.setValue(capitalize(config.getTheme()));
+        grid.add(themeCombo, 1, row++);
+
         grid.add(new Label("Copilot CLI Path:"), 0, row);
         cliPathField = new TextField(config.getCliPath());
         cliPathField.setPromptText("Auto-detect (leave empty)");
@@ -1004,6 +1012,8 @@ public class SettingsWindow {
 
     private void savePreferences() {
         var config = configStore.getConfig();
+        var selectedTheme = themeCombo.getValue().toLowerCase();
+        config.setTheme(selectedTheme);
         config.setCliPath(cliPathField.getText().trim());
         config.setPollIntervalSeconds(pollIntervalSpinner.getValue());
         config.setContextWarningThreshold(warningThresholdSpinner.getValue());
@@ -1011,6 +1021,12 @@ public class SettingsWindow {
         config.setAutoStart(autoStartCheckBox.isSelected());
         config.setOpenDashboardOnStartup(openDashboardOnStartupCheckBox.isSelected());
         configStore.save();
+        themeManager.setTheme(selectedTheme);
+    }
+
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
     }
 
     // =====================================================================

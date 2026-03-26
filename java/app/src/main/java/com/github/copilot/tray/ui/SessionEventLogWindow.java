@@ -26,11 +26,13 @@ public class SessionEventLogWindow {
     private Runnable extraCloseAction;
 
     /**
-     * @param sessionId   the session being attached to
-     * @param sessionName display name of the session
-     * @param onClose     called when the window is closed (should detach the session)
+     * @param sessionId    the session being attached to
+     * @param sessionName  display name of the session
+     * @param onClose      called when the window is closed (should detach the session)
+     * @param themeManager optional theme manager for stylesheet (may be null)
      */
-    public SessionEventLogWindow(String sessionId, String sessionName, Runnable onClose) {
+    public SessionEventLogWindow(String sessionId, String sessionName, Runnable onClose,
+                                  ThemeManager themeManager) {
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setWrapText(true);
@@ -49,7 +51,9 @@ public class SessionEventLogWindow {
         stage.getIcons().add(new javafx.scene.image.Image(
                 getClass().getResourceAsStream("/icons/tray-idle.png")));
         var scene = new Scene(root, 700, 500);
-        scene.getStylesheets().add(getClass().getResource("/css/dashboard.css").toExternalForm());
+        if (themeManager != null) {
+            themeManager.register(scene);
+        }
         stage.setScene(scene);
         stage.setOnCloseRequest(e -> {
             appendLog("— Detaching from session —");

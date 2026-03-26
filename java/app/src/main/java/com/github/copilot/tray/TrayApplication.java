@@ -12,6 +12,7 @@ import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.tray.TrayManager;
 import com.github.copilot.tray.ui.SettingsWindow;
+import com.github.copilot.tray.ui.ThemeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,7 @@ public class TrayApplication {
     private final SettingsWindow settingsWindow;
     private final GhCliRunner ghCliRunner;
     private final RemoteSessionPoller remotePoller;
+    private final ThemeManager themeManager;
 
     public TrayApplication() {
         this.configStore = new ConfigStore();
@@ -43,8 +45,10 @@ public class TrayApplication {
         this.notifier = new Notifier();
         this.ghCliRunner = new GhCliRunner();
         this.remotePoller = new RemoteSessionPoller(ghCliRunner, sessionManager);
+        this.themeManager = new ThemeManager();
+        this.themeManager.setTheme(configStore.getConfig().getTheme());
         this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge, ghCliRunner,
-                remotePoller,
+                remotePoller, themeManager,
                 sessionId -> {
                     try {
                         sdkBridge.deleteSession(sessionId).join();
