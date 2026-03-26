@@ -62,7 +62,7 @@ public class SettingsWindow {
     private GridPane detailGrid;
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
-    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn;
+    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn, viewEventsBtn;
     // Remote-specific action buttons
     private Button viewLogsBtn, openBrowserBtn, openPrBtn, openRepoBtn;
     private SessionSnapshot selectedSession;
@@ -489,7 +489,16 @@ public class SettingsWindow {
             });
         });
 
-        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn,
+        viewEventsBtn = new Button("View Events");
+        viewEventsBtn.setDisable(true);
+        viewEventsBtn.setOnAction(e -> {
+            if (selectedSession == null) return;
+            var viewer = new SessionEventsViewer(selectedSession.id(), selectedSession.name(),
+                    themeManager, stage);
+            viewer.show();
+        });
+
+        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, renameBtn, deleteBtn,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.getStyleClass().add("action-bar");
 
@@ -832,12 +841,15 @@ public class SettingsWindow {
         resumeBtn.setManaged(!remote);
         attachBtn.setVisible(!remote);
         attachBtn.setManaged(!remote);
+        viewEventsBtn.setVisible(!remote);
+        viewEventsBtn.setManaged(!remote);
         renameBtn.setVisible(!remote);
         renameBtn.setManaged(!remote);
         deleteBtn.setVisible(!remote);
         deleteBtn.setManaged(!remote);
         resumeBtn.setDisable(none || multi);
         attachBtn.setDisable(none || multi);
+        viewEventsBtn.setDisable(none || multi);
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
         // Remote actions

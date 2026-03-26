@@ -710,3 +710,82 @@
 .prune-status {
     -fx-text-fill: #555555;
 }
+
+/* --- Session Events Viewer --- */
+
+.events-viewer-header {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a1a1a;
+}
+
+.events-viewer-stats {
+    -fx-font-size: 11px;
+    -fx-text-fill: #666;
+}
+
+.events-viewer-scroll {
+    -fx-background-color: #f8f8f8;
+}
+
+.events-viewer-messages {
+    -fx-background-color: #f8f8f8;
+}
+
+.events-bubble-user {
+    -fx-background-color: #dceeff;
+    -fx-background-radius: 8;
+    -fx-border-color: #b0d4ff;
+    -fx-border-radius: 8;
+}
+
+.events-role-user {
+    -fx-font-weight: bold;
+    -fx-text-fill: #0066cc;
+    -fx-font-size: 12px;
+}
+
+.events-content-user {
+    -fx-text-fill: #1a1a1a;
+    -fx-font-size: 12px;
+}
+
+.events-bubble-assistant {
+    -fx-background-color: #e8f5e8;
+    -fx-background-radius: 8;
+    -fx-border-color: #c0e0c0;
+    -fx-border-radius: 8;
+}
+
+.events-role-assistant {
+    -fx-font-weight: bold;
+    -fx-text-fill: #2d8a2d;
+    -fx-font-size: 12px;
+}
+
+.events-content-assistant {
+    -fx-text-fill: #1a1a1a;
+    -fx-font-size: 12px;
+}
+
+.events-tool-calls {
+    -fx-text-fill: #666;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+}
+
+.events-tool-line {
+    -fx-text-fill: #6666aa;
+    -fx-font-size: 11px;
+    -fx-padding: 1 0 1 16;
+}
+
+.events-system-line {
+    -fx-text-fill: #996600;
+    -fx-font-size: 11px;
+}
+
+.events-timestamp {
+    -fx-text-fill: #999;
+    -fx-font-size: 10px;
+}
