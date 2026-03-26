@@ -63,6 +63,12 @@ public class SettingsWindow {
     private boolean refreshing;
     private List<SessionSnapshot> allSessions = List.of();
 
+    // Layout containers swapped between local/remote
+    private VBox topPane;
+    private SplitPane bottomPaneSplit;
+    private ScrollPane detailScroll;
+    private VBox rightBox;
+
     // Preferences tab controls
     private TextField cliPathField;
     private Spinner<Integer> pollIntervalSpinner;
@@ -148,7 +154,10 @@ public class SettingsWindow {
             if (nv == null) old.setSelected(true);
         });
         locationToggle.selectedToggleProperty().addListener((obs, old, nv) -> {
-            if (!refreshing) refreshSessions(sessionManager.getSessions());
+            if (!refreshing) {
+                rebuildForMode();
+                refreshSessions(sessionManager.getSessions());
+            }
         });
         var toggleBar = new HBox(4, localBtn, remoteBtn);
         toggleBar.setPadding(new Insets(6));
@@ -222,14 +231,14 @@ public class SettingsWindow {
         detailPane = new VBox(placeholderLabel);
         detailPane.setPadding(new Insets(10));
 
-        // Usage tiles pane
+        // Usage tiles pane (local only)
         usageTilesPane = new UsageTilesPane();
 
-        var detailScroll = new ScrollPane(detailPane);
+        detailScroll = new ScrollPane(detailPane);
         detailScroll.setFitToWidth(true);
 
-        // Detail (left 30%) + Usage (right 70%) side by side
-        var bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
+        // Detail (left 30%) + Usage (right 70%) side by side — local mode
+        bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
         bottomPaneSplit.setDividerPositions(0.30);
 
         resumeBtn = new Button("Resume in Terminal");
@@ -364,7 +373,7 @@ public class SettingsWindow {
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
         // Top: aggregate tiles + session table (grows to fill)
-        var topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
+        topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
         topPane.setMinHeight(200);
         VBox.setVgrow(topPane, Priority.ALWAYS);
@@ -375,7 +384,7 @@ public class SettingsWindow {
         bottomPaneSplit.setMaxHeight(375);
 
         // Right side: table on top, detail below, action bar pinned at bottom
-        var rightBox = new VBox(topPane, bottomPaneSplit, actionPane);
+        rightBox = new VBox(topPane, bottomPaneSplit, actionPane);
 
         var split = new SplitPane(leftBox, rightBox);
         split.setDividerPositions(0.28);
@@ -385,6 +394,13 @@ public class SettingsWindow {
 
     @SuppressWarnings("unchecked")
     private void buildSessionTableColumns() {
+        buildLocalTableColumns();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void buildLocalTableColumns() {
+        sessionTable.getColumns().clear();
+
         var nameCol = new TableColumn<SessionSnapshot, String>("Name");
         nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().name()));
         nameCol.setPrefWidth(180);
@@ -393,18 +409,7 @@ public class SettingsWindow {
         modelCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().model()));
         modelCol.setPrefWidth(120);
 
-        var statusCol = new TableColumn<SessionSnapshot, String>("Status");
-        statusCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().status().name()));
-        statusCol.setPrefWidth(85);
-        statusCol.setCellFactory(col -> new TableCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                getStyleClass().removeIf(c -> c.startsWith("status-"));
-                if (empty || item == null) { setText(null); return; }
-                setText(item);
-                getStyleClass().add("status-" + item.toLowerCase());
-            }
-        });
+        var statusCol = createStatusColumn();
 
         var pctCol = new TableColumn<SessionSnapshot, String>("Usage");
         pctCol.setCellValueFactory(cd ->
@@ -428,13 +433,112 @@ public class SettingsWindow {
         });
         ctxCol.setPrefWidth(100);
 
+        var createdCol = createCreatedColumn();
+
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, userMsgsCol, asstMsgsCol, ctxCol, createdCol);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void buildRemoteTableColumns() {
+        sessionTable.getColumns().clear();
+
+        var nameCol = new TableColumn<SessionSnapshot, String>("Name");
+        nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().name()));
+        nameCol.setPrefWidth(200);
+
+        var repoCol = new TableColumn<SessionSnapshot, String>("Repository");
+        repoCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().workingDirectory()));
+        repoCol.setPrefWidth(200);
+
+        var statusCol = createStatusColumn();
+
+        var userCol = new TableColumn<SessionSnapshot, String>("User");
+        userCol.setCellValueFactory(cd -> new SimpleStringProperty(
+                cd.getValue().user() != null ? cd.getValue().user() : ""));
+        userCol.setPrefWidth(100);
+
+        var prCol = new TableColumn<SessionSnapshot, String>("PR");
+        prCol.setCellValueFactory(cd -> new SimpleStringProperty(
+                cd.getValue().pullRequestNumber() != null
+                        ? "#" + cd.getValue().pullRequestNumber() : "—"));
+        prCol.setPrefWidth(60);
+
+        var prStateCol = new TableColumn<SessionSnapshot, String>("PR State");
+        prStateCol.setCellValueFactory(cd -> new SimpleStringProperty(
+                cd.getValue().pullRequestState() != null ? cd.getValue().pullRequestState() : ""));
+        prStateCol.setPrefWidth(80);
+
+        var createdCol = createCreatedColumn();
+
+        sessionTable.getColumns().addAll(nameCol, repoCol, statusCol, userCol, prCol, prStateCol, createdCol);
+    }
+
+    private TableColumn<SessionSnapshot, String> createStatusColumn() {
+        var statusCol = new TableColumn<SessionSnapshot, String>("Status");
+        statusCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().status().name()));
+        statusCol.setPrefWidth(85);
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeIf(c -> c.startsWith("status-"));
+                if (empty || item == null) { setText(null); return; }
+                setText(item);
+                getStyleClass().add("status-" + item.toLowerCase());
+            }
+        });
+        return statusCol;
+    }
+
+    private TableColumn<SessionSnapshot, String> createCreatedColumn() {
         var createdCol = new TableColumn<SessionSnapshot, String>("Created");
         createdCol.setCellValueFactory(cd ->
                 new SimpleStringProperty(cd.getValue().createdAt() != null
                         ? DATE_FMT.format(cd.getValue().createdAt()) : ""));
         createdCol.setPrefWidth(130);
+        return createdCol;
+    }
 
-        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, userMsgsCol, asstMsgsCol, ctxCol, createdCol);
+    /** Rebuild the right pane layout when switching between Local and Remote modes. */
+    private void rebuildForMode() {
+        boolean remote = isRemoteSelected();
+
+        // Swap table columns
+        if (remote) {
+            buildRemoteTableColumns();
+        } else {
+            buildLocalTableColumns();
+        }
+
+        // Swap the bottom section: local shows detail+tiles split, remote shows detail full-width
+        var actionPane = rightBox.getChildren().getLast(); // actionPane is always last
+        rightBox.getChildren().clear();
+
+        if (remote) {
+            // Remote: no aggregate row, detail pane full-width
+            topPane.getChildren().setAll(sessionTable);
+
+            detailScroll.setPrefHeight(375);
+            detailScroll.setMinHeight(375);
+            detailScroll.setMaxHeight(375);
+
+            rightBox.getChildren().addAll(topPane, detailScroll, actionPane);
+        } else {
+            // Local: aggregate row + table on top, detail+tiles split on bottom
+            topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), sessionTable);
+
+            detailScroll.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            detailScroll.setMinHeight(Region.USE_COMPUTED_SIZE);
+            detailScroll.setMaxHeight(Double.MAX_VALUE);
+
+            bottomPaneSplit.setPrefHeight(375);
+            bottomPaneSplit.setMinHeight(375);
+            bottomPaneSplit.setMaxHeight(375);
+
+            rightBox.getChildren().addAll(topPane, bottomPaneSplit, actionPane);
+        }
+
+        VBox.setVgrow(topPane, Priority.ALWAYS);
+        clearDetailPane();
     }
 
     private void onDirectorySelected(String directory) {
