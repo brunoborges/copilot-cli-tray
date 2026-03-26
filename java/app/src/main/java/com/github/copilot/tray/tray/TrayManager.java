@@ -52,6 +52,14 @@ public class TrayManager {
         trayIcon = new TrayIcon(image, "GitHub Copilot Agentic Tray");
         trayIcon.setImageAutoSize(true);
         trayIcon.setPopupMenu(buildMenu(sessionManager.getSessions()));
+        // Rebuild menu on every click so it's fresh when opened
+        trayIcon.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                refreshCliStatus();
+                trayIcon.setPopupMenu(buildMenu(sessionManager.getSessions()));
+            }
+        });
         try {
             SystemTray.getSystemTray().add(trayIcon);
             LOG.info("System tray icon installed");
