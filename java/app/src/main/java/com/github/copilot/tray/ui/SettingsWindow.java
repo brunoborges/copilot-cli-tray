@@ -213,6 +213,8 @@ public class SettingsWindow {
 
         var detailScroll = new ScrollPane(detailPane);
         detailScroll.setFitToWidth(true);
+        detailScroll.setPrefHeight(200);
+        detailScroll.setMaxHeight(200);
 
         // Detail (left 30%) + Usage (right 70%) side by side
         var detailUsageSplit = new SplitPane(detailScroll, usageTilesPane);
