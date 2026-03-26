@@ -165,6 +165,11 @@
     -fx-text-background-color: #ffffff;
 }
 
+.table-view:focused .table-row-cell:selected {
+    -fx-background-color: #04395e;
+    -fx-text-background-color: #ffffff;
+}
+
 .table-view .table-row-cell:selected .text {
     -fx-fill: #ffffff;
 }
@@ -173,9 +178,19 @@
     -fx-text-fill: #e0e0e0;
     -fx-font-size: 12px;
     -fx-padding: 0 8 0 8;
+    -fx-text-background-color: #e0e0e0;
 }
 
 .table-view .table-row-cell:selected .table-cell {
+    -fx-text-fill: #ffffff;
+    -fx-text-background-color: #ffffff;
+}
+
+.table-view .table-row-cell:selected .table-cell .text {
+    -fx-fill: #ffffff;
+}
+
+.table-view .table-row-cell:selected .table-cell .label {
     -fx-text-fill: #ffffff;
 }
 
