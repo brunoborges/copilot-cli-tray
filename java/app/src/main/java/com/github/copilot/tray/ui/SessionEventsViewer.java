@@ -37,12 +37,16 @@ public class SessionEventsViewer {
             System.getProperty("user.home"), ".copilot", "session-state");
 
     private final Stage stage;
+    private final javafx.beans.property.SimpleStringProperty searchTerm =
+            new javafx.beans.property.SimpleStringProperty("");
 
     public SessionEventsViewer(String sessionId, String sessionName,
                                ThemeManager themeManager, Stage owner) {
         var listView = new ListView<ParsedEvent>();
         listView.setCellFactory(lv -> new EventCell());
         listView.getStyleClass().add("events-viewer-list");
+        // Refresh cells when search term changes
+        searchTerm.addListener((obs, old, val) -> listView.refresh());
 
         var placeholder = new Label("No events found for this session.");
         placeholder.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
@@ -145,6 +149,7 @@ public class SessionEventsViewer {
                     var query = searchField.getText().trim().toLowerCase();
                     searchMatches.clear();
                     searchIdx[0] = -1;
+                    searchTerm.set(query);
                     if (query.isEmpty()) {
                         searchStatus.setText("");
                         prevSearchBtn.setDisable(true);
@@ -331,9 +336,7 @@ public class SessionEventsViewer {
         var roleLabel = new Label("👤 User");
         roleLabel.getStyleClass().add("events-role-user");
 
-        var contentLabel = new Label(truncate(event.content(), 2000));
-        contentLabel.setWrapText(true);
-        contentLabel.getStyleClass().add("events-content-user");
+        var contentNode = highlightedContent(truncate(event.content(), 2000), "events-content-user");
 
         var timeLabel = buildTimeLabel(event.timestamp());
 
@@ -341,7 +344,7 @@ public class SessionEventsViewer {
         HBox.setHgrow(header.getChildren().get(1), Priority.ALWAYS);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        var box = new VBox(4, header, contentLabel);
+        var box = new VBox(4, header, contentNode);
         box.getStyleClass().add("events-bubble-user");
         box.setPadding(new Insets(8));
         return box;
@@ -362,10 +365,8 @@ public class SessionEventsViewer {
         box.setPadding(new Insets(8));
 
         if (!event.content().isEmpty()) {
-            var contentLabel = new Label(truncate(event.content(), 2000));
-            contentLabel.setWrapText(true);
-            contentLabel.getStyleClass().add("events-content-assistant");
-            box.getChildren().add(contentLabel);
+            var contentNode = highlightedContent(truncate(event.content(), 2000), "events-content-assistant");
+            box.getChildren().add(contentNode);
         }
 
         if (!event.toolCalls().isEmpty()) {
@@ -489,5 +490,43 @@ public class SessionEventsViewer {
         if (s == null) return "";
         if (s.length() <= max) return s;
         return s.substring(0, max) + "…";
+    }
+
+    /**
+     * Build a TextFlow that highlights occurrences of the search term.
+     * Returns a plain Label if no search term is active.
+     */
+    private Node highlightedContent(String text, String cssClass) {
+        var term = searchTerm.get();
+        if (term == null || term.isEmpty()) {
+            var label = new Label(text);
+            label.setWrapText(true);
+            label.getStyleClass().add(cssClass);
+            return label;
+        }
+        var flow = new javafx.scene.text.TextFlow();
+        flow.getStyleClass().add(cssClass);
+        var lower = text.toLowerCase();
+        int idx = 0;
+        while (idx < text.length()) {
+            int match = lower.indexOf(term, idx);
+            if (match < 0) {
+                var rest = new javafx.scene.text.Text(text.substring(idx));
+                flow.getChildren().add(rest);
+                break;
+            }
+            if (match > idx) {
+                var before = new javafx.scene.text.Text(text.substring(idx, match));
+                flow.getChildren().add(before);
+            }
+            var hl = new javafx.scene.text.Text(text.substring(match, match + term.length()));
+            hl.setStyle("-fx-fill: #000000; -fx-font-weight: bold;");
+            var hlLabel = new Label();
+            hlLabel.setGraphic(hl);
+            hlLabel.setStyle("-fx-background-color: #f9e64f; -fx-background-radius: 2; -fx-padding: 0 1;");
+            flow.getChildren().add(hlLabel);
+            idx = match + term.length();
+        }
+        return flow;
     }
 }
