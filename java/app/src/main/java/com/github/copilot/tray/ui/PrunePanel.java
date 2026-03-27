@@ -537,6 +537,9 @@ public class PrunePanel extends VBox {
 
                     // Remove deleted from selection map
                     result.deletedSessionIds().forEach(selectionMap::remove);
+
+                    // Notify SessionManager so other views (e.g. Sessions page) update
+                    result.deletedSessionIds().forEach(sessionManager::removeSession);
                     var remaining = candidates.stream()
                             .filter(c -> !result.deletedSessionIds().contains(c.sessionId()))
                             .toList();
