@@ -1,11 +1,14 @@
 package com.github.copilot.tray.ui;
 
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -36,36 +39,31 @@ public class SessionEventsViewer {
 
     public SessionEventsViewer(String sessionId, String sessionName,
                                ThemeManager themeManager, Stage owner) {
-        var events = loadEvents(sessionId);
+        var listView = new ListView<ParsedEvent>();
+        listView.setCellFactory(lv -> new EventCell());
+        listView.getStyleClass().add("events-viewer-list");
 
-        var messagesBox = new VBox(8);
-        messagesBox.setPadding(new Insets(12));
-        messagesBox.getStyleClass().add("events-viewer-messages");
+        var placeholder = new Label("No events found for this session.");
+        placeholder.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
 
-        for (var event : events) {
-            messagesBox.getChildren().add(buildEventNode(event));
-        }
-
-        if (events.isEmpty()) {
-            var emptyLabel = new Label("No events found for this session.");
-            emptyLabel.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
-            messagesBox.getChildren().add(emptyLabel);
-        }
-
-        var scroll = new ScrollPane(messagesBox);
-        scroll.setFitToWidth(true);
-        scroll.getStyleClass().add("events-viewer-scroll");
+        // Show spinner while loading
+        var loadingSpinner = new ProgressIndicator();
+        loadingSpinner.setPrefSize(40, 40);
+        var loadingBox = new VBox(loadingSpinner, new Label("Loading events..."));
+        loadingBox.setAlignment(Pos.CENTER);
+        loadingBox.setSpacing(8);
+        listView.setPlaceholder(loadingBox);
 
         var header = new Label("Session: " + sessionName + "  (" + sessionId + ")");
         header.getStyleClass().add("events-viewer-header");
         header.setPadding(new Insets(8));
 
-        var statsLabel = new Label(buildStatsText(events));
+        var statsLabel = new Label();
         statsLabel.getStyleClass().add("events-viewer-stats");
         statsLabel.setPadding(new Insets(0, 8, 4, 8));
 
-        var root = new VBox(header, statsLabel, scroll);
-        VBox.setVgrow(scroll, Priority.ALWAYS);
+        var root = new VBox(header, statsLabel, listView);
+        VBox.setVgrow(listView, Priority.ALWAYS);
 
         stage = new Stage();
         if (owner != null) stage.initOwner(owner);
@@ -83,6 +81,17 @@ public class SessionEventsViewer {
                         javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
                 () -> stage.close());
         stage.setScene(scene);
+
+        // Load events in background
+        Thread.ofVirtual().start(() -> {
+            var events = loadEvents(sessionId);
+            var stats = buildStatsText(events);
+            Platform.runLater(() -> {
+                listView.getItems().addAll(events);
+                statsLabel.setText(stats);
+                listView.setPlaceholder(placeholder);
+            });
+        });
     }
 
     public void show() {
@@ -171,6 +180,24 @@ public class SessionEventsViewer {
                 toolCalls.add(new ToolCall(name, ""));
             }
             idx = nameStart + 6;
+        }
+    }
+
+    // =====================================================================
+    // ListView cell factory
+    // =====================================================================
+
+    private class EventCell extends ListCell<ParsedEvent> {
+        @Override
+        protected void updateItem(ParsedEvent event, boolean empty) {
+            super.updateItem(event, empty);
+            if (empty || event == null) {
+                setGraphic(null);
+                setText(null);
+            } else {
+                setGraphic(buildEventNode(event));
+            }
+            setStyle("-fx-background-color: transparent; -fx-padding: 2 0;");
         }
     }
 

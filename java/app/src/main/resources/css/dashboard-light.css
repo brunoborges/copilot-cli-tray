@@ -793,6 +793,21 @@
     -fx-background-color: #f8f8f8;
 }
 
+.events-viewer-list {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.events-viewer-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 2 0;
+}
+.events-viewer-list .list-cell:selected {
+    -fx-background-color: transparent;
+}
+.events-viewer-list .list-cell:focused {
+    -fx-background-color: transparent;
+}
+
 .events-bubble-user {
     -fx-background-color: #dceeff;
     -fx-background-radius: 8;
