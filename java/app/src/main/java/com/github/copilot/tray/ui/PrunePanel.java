@@ -27,6 +27,7 @@ public class PrunePanel extends VBox {
 
     private final SessionPruner pruner;
     private final Consumer<String> resumeHandler;
+    private final ThemeManager themeManager;
 
     private final TableView<PruneCandidate> table = new TableView<>();
     private final CheckBox includeTrivialCb = new CheckBox("Include trivial sessions (≤5 messages)");
@@ -58,12 +59,13 @@ public class PrunePanel extends VBox {
     private List<PruneCandidate> candidates = List.of();
 
     public PrunePanel() {
-        this(new SessionPruner(), id -> {});
+        this(new SessionPruner(), id -> {}, null);
     }
 
-    public PrunePanel(SessionPruner pruner, Consumer<String> resumeHandler) {
+    public PrunePanel(SessionPruner pruner, Consumer<String> resumeHandler, ThemeManager themeManager) {
         this.pruner = pruner;
         this.resumeHandler = resumeHandler;
+        this.themeManager = themeManager;
 
         setSpacing(10);
         setPadding(new Insets(12));
@@ -236,7 +238,10 @@ public class PrunePanel extends VBox {
                 });
                 viewEventsItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
-                    if (item != null) SessionEventsViewer.show(item.sessionId());
+                    if (item != null) {
+                        new SessionEventsViewer(item.sessionId(), item.firstUserMessage(),
+                                themeManager, null).show();
+                    }
                 });
                 deleteItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
@@ -434,7 +439,13 @@ public class PrunePanel extends VBox {
                     setGraphic(null);
                 } else {
                     resumeItem.setOnAction(e -> resumeHandler.accept(sessionId));
-                    viewEventsItem.setOnAction(e -> SessionEventsViewer.show(sessionId));
+                    viewEventsItem.setOnAction(e -> {
+                        var name = candidates.stream()
+                                .filter(c -> c.sessionId().equals(sessionId))
+                                .map(PruneCandidate::firstUserMessage)
+                                .findFirst().orElse(sessionId);
+                        new SessionEventsViewer(sessionId, name, themeManager, null).show();
+                    });
                     deleteItem.setOnAction(e -> candidates.stream()
                             .filter(c -> c.sessionId().equals(sessionId))
                             .findFirst()
