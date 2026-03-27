@@ -381,7 +381,8 @@ public class SettingsWindow {
         deleteBtn.setDisable(true);
         deleteBtn.getStyleClass().add("delete-btn");
         var deleteProgress = new ProgressBar(0);
-        deleteProgress.setMaxWidth(Double.MAX_VALUE);
+        deleteProgress.setMaxWidth(120);
+        deleteProgress.setPrefWidth(120);
         deleteProgress.setVisible(false);
         deleteProgress.managedProperty().bind(deleteProgress.visibleProperty());
         deleteBtn.setOnAction(e -> {
@@ -491,12 +492,10 @@ public class SettingsWindow {
             viewer.show();
         });
 
-        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, renameBtn, deleteBtn,
+        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, renameBtn, deleteBtn, deleteProgress,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
-        actionBar.getStyleClass().add("action-bar");
-
-        var actionPane = new VBox(4, actionBar, deleteProgress);
-        actionPane.getStyleClass().add("sessions-card");
+        actionBar.setAlignment(Pos.CENTER_LEFT);
+        actionBar.getStyleClass().addAll("action-bar", "sessions-card");
 
         // Wrap session table in a rounded card
         tableCard = new VBox(sessionTable);
@@ -524,7 +523,7 @@ public class SettingsWindow {
         bottomPane.getStyleClass().add("sessions-section");
 
         // Right side: table on top, detail below, action bar pinned at bottom
-        rightBox = new VBox(8, topPane, bottomPane, actionPane);
+        rightBox = new VBox(8, topPane, bottomPane, actionBar);
         rightBox.setPadding(new Insets(8, 0, 8, 0));
 
         var split = new SplitPane(leftBox, rightBox);
@@ -730,7 +729,7 @@ public class SettingsWindow {
         }
 
         // Swap the bottom section: local shows detail+tiles split, remote shows detail full-width
-        var actionPane = rightBox.getChildren().getLast(); // actionPane is always last
+        var actionBarNode = rightBox.getChildren().getLast(); // actionBar is always last
         rightBox.getChildren().clear();
 
         if (remote) {
@@ -741,7 +740,7 @@ public class SettingsWindow {
             detailPane.setMinHeight(375);
             detailPane.setMaxHeight(375);
 
-            rightBox.getChildren().addAll(topPane, detailPane, actionPane);
+            rightBox.getChildren().addAll(topPane, detailPane, actionBarNode);
         } else {
             // Local: aggregate row + table on top, detail+tiles split on bottom
             topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), tableCard);
@@ -754,7 +753,7 @@ public class SettingsWindow {
             bottomPane.setMinHeight(375);
             bottomPane.setMaxHeight(375);
 
-            rightBox.getChildren().addAll(topPane, bottomPane, actionPane);
+            rightBox.getChildren().addAll(topPane, bottomPane, actionBarNode);
         }
 
         VBox.setVgrow(topPane, Priority.ALWAYS);
