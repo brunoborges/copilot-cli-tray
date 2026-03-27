@@ -391,37 +391,29 @@ public class SettingsWindow {
             var msg = selected.size() == 1
                     ? "Delete session '" + selected.getFirst().name() + "'?"
                     : "Delete " + selected.size() + " selected sessions?";
-            var alert = new Alert(Alert.AlertType.WARNING, msg, ButtonType.YES, ButtonType.NO);
-            alert.setTitle("Delete Session");
-            alert.setHeaderText(null);
-            alert.initOwner(stage);
-            if (themeManager != null) themeManager.register(alert.getDialogPane().getScene());
-            alert.showAndWait().ifPresent(bt -> {
-                        if (bt == ButtonType.YES) {
-                            actionBar.setDisable(true);
-                            deleteProgress.setProgress(0);
-                            deleteProgress.setVisible(true);
-                            int total = selected.size();
-                            Thread.ofVirtual().start(() -> {
-                                for (int i = 0; i < total; i++) {
-                                    var s = selected.get(i);
-                                    try {
-                                        deleteHandler.accept(s.id());
-                                    } catch (Exception ignored) {
-                                        // already handled inside the handler
-                                    }
-                                    final double progress = (i + 1.0) / total;
-                                    Platform.runLater(() -> deleteProgress.setProgress(progress));
-                                }
-                                Platform.runLater(() -> {
-                                    deleteProgress.setVisible(false);
-                                    actionBar.setDisable(false);
-                                    sessionTable.getSelectionModel().clearSelection();
-                                    updateActionButtons(0);
-                                });
-                            });
-                        }
-                    });
+            if (!DeleteConfirmDialog.confirm(msg, stage, themeManager)) return;
+            actionBar.setDisable(true);
+            deleteProgress.setProgress(0);
+            deleteProgress.setVisible(true);
+            int total = selected.size();
+            Thread.ofVirtual().start(() -> {
+                for (int i = 0; i < total; i++) {
+                    var s = selected.get(i);
+                    try {
+                        deleteHandler.accept(s.id());
+                    } catch (Exception ignored) {
+                        // already handled inside the handler
+                    }
+                    final double progress = (i + 1.0) / total;
+                    Platform.runLater(() -> deleteProgress.setProgress(progress));
+                }
+                Platform.runLater(() -> {
+                    deleteProgress.setVisible(false);
+                    actionBar.setDisable(false);
+                    sessionTable.getSelectionModel().clearSelection();
+                    updateActionButtons(0);
+                });
+            });
         });
 
         // Remote-specific action buttons

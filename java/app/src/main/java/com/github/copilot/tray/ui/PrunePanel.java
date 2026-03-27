@@ -504,18 +504,11 @@ public class PrunePanel extends VBox {
     // --- Prune ---
 
     private void deleteSingleSession(PruneCandidate candidate) {
-        var alert = new Alert(Alert.AlertType.WARNING,
-                "Delete session '" + resolveSessionName(candidate) + "'?\n("
-                        + candidate.diskSizeFormatted() + ")",
-                ButtonType.YES, ButtonType.NO);
-        alert.setHeaderText(null);
-        alert.setTitle("Delete Session");
-        if (themeManager != null) themeManager.register(alert.getDialogPane().getScene());
-        alert.showAndWait().ifPresent(bt -> {
-            if (bt == ButtonType.YES) {
-                executePrune(List.of(candidate));
-            }
-        });
+        var msg = "Delete session '" + resolveSessionName(candidate) + "'?\n("
+                + candidate.diskSizeFormatted() + ")";
+        if (DeleteConfirmDialog.confirm(msg, getScene() != null ? getScene().getWindow() : null, themeManager)) {
+            executePrune(List.of(candidate));
+        }
     }
 
     private void confirmAndPrune() {
@@ -526,21 +519,12 @@ public class PrunePanel extends VBox {
         }
 
         long totalSize = selected.stream().mapToLong(PruneCandidate::diskSizeBytes).sum();
-
-        var alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Confirm Prune");
-        alert.setHeaderText("Delete " + selected.size() + " sessions?");
-        alert.setContentText("This will permanently delete " + selected.size()
+        var msg = "This will permanently delete " + selected.size()
                 + " session(s) and free approximately " + formatSize(totalSize)
-                + " of disk space.\n\nThis action cannot be undone.");
-        alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-        if (themeManager != null) themeManager.register(alert.getDialogPane().getScene());
-
-        alert.showAndWait().ifPresent(bt -> {
-            if (bt == ButtonType.YES) {
-                executePrune(selected);
-            }
-        });
+                + " of disk space.\n\nThis action cannot be undone.";
+        if (DeleteConfirmDialog.confirm(msg, getScene() != null ? getScene().getWindow() : null, themeManager)) {
+            executePrune(selected);
+        }
     }
 
     private void executePrune(List<PruneCandidate> toDelete) {
