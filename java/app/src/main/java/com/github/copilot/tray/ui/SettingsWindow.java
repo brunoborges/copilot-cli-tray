@@ -72,7 +72,8 @@ public class SettingsWindow {
 
     // Layout containers swapped between local/remote
     private VBox topPane;
-    private SplitPane bottomPaneSplit;
+    private VBox tableCard;
+    private HBox bottomPane;
     private ScrollPane detailScroll;
     private VBox rightBox;
 
@@ -334,10 +335,18 @@ public class SettingsWindow {
         detailScroll = new ScrollPane(detailPane);
         detailScroll.setFitToWidth(true);
 
-        // Detail (left) + Usage (right, fixed width) side by side — local mode
-        bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
-        bottomPaneSplit.setDividerPositions(0.30);
-        SplitPane.setResizableWithParent(usageTilesPane, false);
+        // Detail (left, grows) + Usage tiles (right, fixed width) side by side — local mode
+        var detailCard = new VBox(detailScroll);
+        detailCard.getStyleClass().add("sessions-card");
+        VBox.setVgrow(detailScroll, Priority.ALWAYS);
+        HBox.setHgrow(detailCard, Priority.ALWAYS);
+
+        var tilesCard = new VBox(usageTilesPane);
+        tilesCard.getStyleClass().add("sessions-card");
+        tilesCard.setMinWidth(480);
+        tilesCard.setMaxWidth(480);
+
+        bottomPane = new HBox(8, detailCard, tilesCard);
 
         newSessionBtn = new Button("New Session");
         newSessionBtn.setOnAction(e -> {
@@ -501,7 +510,7 @@ public class SettingsWindow {
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
         // Wrap session table in a rounded card
-        var tableCard = new VBox(sessionTable);
+        tableCard = new VBox(sessionTable);
         tableCard.getStyleClass().add("sessions-card");
         tableCard.setPadding(new Insets(2));
         // Clip content to rounded corners
@@ -521,12 +530,13 @@ public class SettingsWindow {
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
         // Bottom: fixed-height detail + usage side by side
-        bottomPaneSplit.setPrefHeight(375);
-        bottomPaneSplit.setMinHeight(375);
-        bottomPaneSplit.setMaxHeight(375);
+        bottomPane.setPrefHeight(375);
+        bottomPane.setMinHeight(375);
+        bottomPane.setMaxHeight(375);
+        bottomPane.setPadding(new Insets(0, 12, 0, 12));
 
         // Right side: table on top, detail below, action bar pinned at bottom
-        rightBox = new VBox(topPane, bottomPaneSplit, actionPane);
+        rightBox = new VBox(topPane, bottomPane, actionPane);
 
         var split = new SplitPane(leftBox, rightBox);
         split.setDividerPositions(0.20);
@@ -736,7 +746,7 @@ public class SettingsWindow {
 
         if (remote) {
             // Remote: no aggregate row, detail pane full-width
-            topPane.getChildren().setAll(sessionTable);
+            topPane.getChildren().setAll(tableCard);
 
             detailScroll.setPrefHeight(375);
             detailScroll.setMinHeight(375);
@@ -745,17 +755,17 @@ public class SettingsWindow {
             rightBox.getChildren().addAll(topPane, detailScroll, actionPane);
         } else {
             // Local: aggregate row + table on top, detail+tiles split on bottom
-            topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), sessionTable);
+            topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), tableCard);
 
             detailScroll.setPrefHeight(Region.USE_COMPUTED_SIZE);
             detailScroll.setMinHeight(Region.USE_COMPUTED_SIZE);
             detailScroll.setMaxHeight(Double.MAX_VALUE);
 
-            bottomPaneSplit.setPrefHeight(375);
-            bottomPaneSplit.setMinHeight(375);
-            bottomPaneSplit.setMaxHeight(375);
+            bottomPane.setPrefHeight(375);
+            bottomPane.setMinHeight(375);
+            bottomPane.setMaxHeight(375);
 
-            rightBox.getChildren().addAll(topPane, bottomPaneSplit, actionPane);
+            rightBox.getChildren().addAll(topPane, bottomPane, actionPane);
         }
 
         VBox.setVgrow(topPane, Priority.ALWAYS);
