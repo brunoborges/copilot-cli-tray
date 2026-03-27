@@ -277,6 +277,23 @@ public class PrunePanel extends VBox {
         var msgsCol = new TableColumn<PruneCandidate, String>("Msgs");
         msgsCol.setCellValueFactory(cd -> new SimpleStringProperty(
                 cd.getValue().userMessageCount() + "/" + cd.getValue().assistantMessageCount()));
+        msgsCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                } else {
+                    setText(item);
+                    var pc = getTableRow().getItem();
+                    if (pc != null) {
+                        setTooltip(new Tooltip("User messages: " + pc.userMessageCount()
+                                + "\nAssistant messages: " + pc.assistantMessageCount()));
+                    }
+                }
+            }
+        });
         msgsCol.setPrefWidth(50);
         msgsCol.setMinWidth(45);
         msgsCol.setMaxWidth(60);
