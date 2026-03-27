@@ -653,6 +653,20 @@
     -fx-font-weight: bold;
 }
 
+.prune-deselect-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: #b0b0c0;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: #606070;
+}
+.prune-deselect-btn:hover {
+    -fx-background-color: #e8e8f0;
+    -fx-border-color: #8080a0;
+    -fx-text-fill: #303040;
+}
+
 .prune-delete-btn {
     -fx-text-fill: #d32f2f;
     -fx-font-weight: bold;

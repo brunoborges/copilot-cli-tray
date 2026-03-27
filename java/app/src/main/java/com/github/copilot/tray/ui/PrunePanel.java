@@ -100,6 +100,7 @@ public class PrunePanel extends VBox {
         statusLabel.getStyleClass().add("prune-status");
 
         // Selection controls
+        deselectAllBtn.getStyleClass().add("prune-deselect-btn");
         deselectAllBtn.setOnAction(e -> setSelectionByCategory(null, false));
         selectAllBtn.setOnAction(e -> setSelectionByCategory(null, true));
         selectEmptyBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.EMPTY, true); });
