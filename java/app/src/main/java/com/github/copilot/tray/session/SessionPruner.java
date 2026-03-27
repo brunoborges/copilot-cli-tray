@@ -321,7 +321,14 @@ public class SessionPruner {
         }
     }
 
-    private static long directorySize(Path dir) {
+    /** Get the disk size of a session by its ID. */
+    public static long sessionDiskSize(String sessionId) {
+        var dir = defaultSessionStoreDir().resolve(sessionId);
+        return Files.isDirectory(dir) ? directorySize(dir) : 0;
+    }
+
+    /** Calculate the total size of a directory tree in bytes. */
+    public static long directorySize(Path dir) {
         try (var walk = Files.walk(dir)) {
             return walk.filter(Files::isRegularFile)
                     .mapToLong(f -> {

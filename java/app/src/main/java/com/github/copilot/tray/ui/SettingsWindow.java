@@ -388,9 +388,14 @@ public class SettingsWindow {
         deleteBtn.setOnAction(e -> {
             var selected = List.copyOf(sessionTable.getSelectionModel().getSelectedItems());
             if (selected.isEmpty()) return;
+            long totalSize = selected.stream()
+                    .mapToLong(s -> com.github.copilot.tray.session.SessionPruner.sessionDiskSize(s.id()))
+                    .sum();
+            var sizeStr = formatDiskSize(totalSize);
             var msg = selected.size() == 1
-                    ? "Delete session '" + selected.getFirst().name() + "'?"
-                    : "Delete " + selected.size() + " selected sessions?";
+                    ? "Delete session '" + selected.getFirst().name() + "'?\n(" + sizeStr + ")"
+                    : "Delete " + selected.size() + " selected sessions?\n\nThis will free approximately "
+                            + sizeStr + " of disk space.\n\nThis action cannot be undone.";
             if (!DeleteConfirmDialog.confirm(msg, stage, themeManager)) return;
             actionBar.setDisable(true);
             deleteProgress.setProgress(0);
@@ -1381,5 +1386,11 @@ public class SettingsWindow {
             catch (Exception ex) { /* ignore */ }
         });
         return link;
+    }
+
+    private static String formatDiskSize(long bytes) {
+        if (bytes >= 1_048_576) return String.format("%.1f MB", bytes / 1_048_576.0);
+        if (bytes >= 1_024) return String.format("%.1f KB", bytes / 1_024.0);
+        return bytes + " B";
     }
 }
