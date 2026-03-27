@@ -278,6 +278,8 @@ public class SettingsWindow {
 
         // --- Right top: session table ---
         sessionTable = new TableView<>();
+        sessionTable.getStyleClass().add("sessions-card-table");
+        sessionTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         sessionTable.setPlaceholder(new Label("Select a directory."));
         sessionTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         buildSessionTableColumns();
@@ -498,9 +500,14 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        // Top: aggregate tiles + session table (grows to fill)
-        topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
+        // Wrap session table in a rounded card
+        var tableCard = new VBox(sessionTable);
+        tableCard.getStyleClass().add("sessions-card");
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
+        VBox.setVgrow(tableCard, Priority.ALWAYS);
+
+        // Top: aggregate tiles + session table card (grows to fill)
+        topPane = new VBox(4, usageTilesPane.getAggregateRow(), tableCard);
         topPane.setMinHeight(200);
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
@@ -562,7 +569,9 @@ public class SettingsWindow {
 
         var createdCol = createCreatedColumn();
 
-        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, userMsgsCol, asstMsgsCol, ctxCol, createdCol);
+        var actionsCol = createActionsColumn();
+
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, userMsgsCol, asstMsgsCol, ctxCol, createdCol, actionsCol);
     }
 
     @SuppressWarnings("unchecked")
@@ -623,6 +632,68 @@ public class SettingsWindow {
                         ? DATE_FMT.format(cd.getValue().createdAt()) : ""));
         createdCol.setPrefWidth(130);
         return createdCol;
+    }
+
+    @SuppressWarnings("unchecked")
+    private TableColumn<SessionSnapshot, Void> createActionsColumn() {
+        var actionsCol = new TableColumn<SessionSnapshot, Void>("⋮");
+        actionsCol.setPrefWidth(50);
+        actionsCol.setMinWidth(50);
+        actionsCol.setMaxWidth(50);
+        actionsCol.setSortable(false);
+        actionsCol.setResizable(false);
+        actionsCol.setCellFactory(col -> new TableCell<>() {
+            private final MenuButton menuBtn = new MenuButton("\u22EE");
+            private final MenuItem resumeItem = new MenuItem("Resume");
+            private final MenuItem viewEventsItem = new MenuItem("View Events");
+            private final MenuItem copyIdItem = new MenuItem("Copy ID");
+            private final MenuItem deleteItem = new MenuItem("Delete");
+            {
+                menuBtn.getStyleClass().add("prune-small-btn");
+                menuBtn.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0; -fx-alignment: center;");
+                menuBtn.setPrefSize(28, 28);
+                menuBtn.setMinSize(28, 28);
+                menuBtn.setMaxSize(28, 28);
+                setAlignment(Pos.CENTER);
+                menuBtn.getItems().addAll(resumeItem, viewEventsItem, copyIdItem,
+                        new SeparatorMenuItem(), deleteItem);
+                resumeItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) resumeHandler.accept(item.id());
+                });
+                viewEventsItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        new SessionEventsViewer(item.id(), item.name(),
+                                themeManager, stage).show();
+                    }
+                });
+                copyIdItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        var cb = javafx.scene.input.Clipboard.getSystemClipboard();
+                        var content = new javafx.scene.input.ClipboardContent();
+                        content.putString(item.id());
+                        cb.setContent(content);
+                    }
+                });
+                deleteItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        sessionTable.getSelectionModel().clearSelection();
+                        sessionTable.getSelectionModel().select(item);
+                        deleteBtn.fire();
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : menuBtn);
+            }
+        });
+        return actionsCol;
     }
 
     /** Rebuild the right pane layout when switching between Local and Remote modes. */

@@ -137,6 +137,108 @@
     -fx-text-fill: #333333;
 }
 
+/* --- Sessions card table --- */
+
+.sessions-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-color: #d0d0d8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 6, 0, 0, 2);
+}
+
+.sessions-card-table {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 8;
+    -fx-padding: 0;
+}
+
+.sessions-card-table > .virtual-flow > .scroll-bar:horizontal {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    -fx-opacity: 0;
+    -fx-padding: 0;
+}
+
+.sessions-card-table .column-header-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #e0e0e8 transparent;
+}
+
+.sessions-card-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent #e0e0e8 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 6 8;
+}
+
+.sessions-card-table .column-header:last-visible {
+    -fx-border-color: transparent;
+}
+
+.sessions-card-table .column-header .label {
+    -fx-text-fill: #707088;
+    -fx-font-weight: normal;
+    -fx-font-size: 11px;
+}
+
+.sessions-card-table .table-cell {
+    -fx-border-color: #e8e8f0 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-font-size: 12px;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: CENTER-LEFT;
+    -fx-text-background-color: #2e2e3e;
+}
+
+.sessions-card-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-cell-size: 28;
+}
+
+.sessions-card-table .table-row-cell:hover {
+    -fx-background-color: #f0f0f5;
+}
+
+.sessions-card-table .table-row-cell:selected {
+    -fx-background-color: #cce5ff;
+    -fx-text-background-color: #1a1a2e;
+}
+
+.sessions-card-table:focused .table-row-cell:selected {
+    -fx-background-color: #cce5ff;
+    -fx-text-background-color: #1a1a2e;
+}
+
+.sessions-card-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: #1a1a2e;
+    -fx-text-background-color: #1a1a2e;
+}
+
+.sessions-card-table .table-row-cell:selected .table-cell .text {
+    -fx-fill: #1a1a2e;
+}
+
+.sessions-card-table .table-row-cell:selected .table-cell .label {
+    -fx-text-fill: #1a1a2e;
+}
+
+.sessions-card-table .table-row-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.sessions-card-table .placeholder .label {
+    -fx-text-fill: #a0a0b0;
+}
+
+.sessions-card-table .filler {
+    -fx-background-color: transparent;
+}
+
 /* --- Table view --- */
 
 .table-view {
