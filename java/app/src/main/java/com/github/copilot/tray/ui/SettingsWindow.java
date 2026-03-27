@@ -1191,11 +1191,22 @@ public class SettingsWindow {
         var content = new VBox(10);
         content.setPadding(new Insets(15));
 
+        // Load build info
+        var buildProps = new java.util.Properties();
+        try (var is = getClass().getResourceAsStream("/build.properties")) {
+            if (is != null) buildProps.load(is);
+        } catch (Exception ignored) {}
+        var appVersion = buildProps.getProperty("app.version", "unknown");
+        var buildTime = buildProps.getProperty("build.timestamp", "unknown");
+        var gitCommit = buildProps.getProperty("git.commit", "unknown");
+
         // App info
         content.getChildren().addAll(
                 createSectionHeader("Application"),
                 new Label("GitHub Copilot Agentic Tray"),
-                new Label("Version: 1.0.0-SNAPSHOT"),
+                new Label("Version: " + appVersion),
+                new Label("Build: " + buildTime),
+                new Label("Commit: " + gitCommit),
                 new Label("License: MIT"),
                 new Label("A cross-platform system tray application to track and manage"),
                 new Label("GitHub Copilot CLI sessions and remote coding agents."),
@@ -1221,7 +1232,6 @@ public class SettingsWindow {
         var cliAuthLabel = new Label("Authenticated: checking…");
         var cliAuthTypeLabel = new Label("Auth Type: —");
         var cliLoginLabel = new Label("Login: —");
-        var refreshBtn = new Button("Refresh Status");
 
         content.getChildren().addAll(
                 cliStatusHeader,
@@ -1231,7 +1241,6 @@ public class SettingsWindow {
                 cliAuthLabel,
                 cliAuthTypeLabel,
                 cliLoginLabel,
-                refreshBtn,
                 new Separator()
         );
 
@@ -1255,9 +1264,6 @@ public class SettingsWindow {
             return null;
         });
 
-        fetchStatus.run();
-        refreshBtn.setOnAction(e -> fetchStatus.run());
-
         // Links
         content.getChildren().addAll(
                 createSectionHeader("Links"),
@@ -1268,6 +1274,12 @@ public class SettingsWindow {
 
         var scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
+
+        // Auto-fetch CLI status whenever the About page becomes visible
+        scrollPane.visibleProperty().addListener((obs, wasVisible, isNowVisible) -> {
+            if (isNowVisible) fetchStatus.run();
+        });
+
         return scrollPane;
     }
 

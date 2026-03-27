@@ -71,7 +71,44 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>build.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>build.properties</exclude>
+        </excludes>
+      </resource>
+    </resources>
     <plugins>
+      <!-- Git commit info -->
+      <plugin>
+        <groupId>io.github.git-commit-id</groupId>
+        <artifactId>git-commit-id-maven-plugin</artifactId>
+        <version>9.0.1</version>
+        <executions>
+          <execution>
+            <goals><goal>revision</goal></goals>
+            <phase>initialize</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <dotGitDirectory>${project.basedir}/../../.git</dotGitDirectory>
+          <generateGitPropertiesFile>false</generateGitPropertiesFile>
+          <includeOnlyProperties>
+            <includeOnlyProperty>git.commit.id.abbrev</includeOnlyProperty>
+            <includeOnlyProperty>git.commit.id</includeOnlyProperty>
+          </includeOnlyProperties>
+        </configuration>
+      </plugin>
+
       <!-- Compiler -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
