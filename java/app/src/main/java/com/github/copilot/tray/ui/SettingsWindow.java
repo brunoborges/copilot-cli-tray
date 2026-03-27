@@ -1188,9 +1188,6 @@ public class SettingsWindow {
     // =====================================================================
 
     private Node createAboutContent() {
-        var content = new VBox(10);
-        content.setPadding(new Insets(15));
-
         // Load build info
         var buildProps = new java.util.Properties();
         try (var is = getClass().getResourceAsStream("/build.properties")) {
@@ -1200,51 +1197,60 @@ public class SettingsWindow {
         var buildTime = buildProps.getProperty("build.timestamp", "unknown");
         var gitCommit = buildProps.getProperty("git.commit", "unknown");
 
-        // App info
-        content.getChildren().addAll(
-                createSectionHeader("Application"),
-                new Label("GitHub Copilot Agentic Tray"),
-                new Label("Version: " + appVersion),
-                new Label("Build: " + buildTime),
-                new Label("Commit: " + gitCommit),
-                new Label("License: MIT"),
-                new Label("A cross-platform system tray application to track and manage"),
-                new Label("GitHub Copilot CLI sessions and remote coding agents."),
-                new Separator()
-        );
+        // --- Hero header ---
+        var appName = new Label("GitHub Copilot Agentic Tray");
+        appName.getStyleClass().add("about-app-name");
 
-        // Runtime info
-        content.getChildren().addAll(
-                createSectionHeader("Runtime"),
-                new Label("JDK: " + System.getProperty("java.version")
-                        + " (" + System.getProperty("java.vendor", "") + ")"),
-                new Label("JavaFX: " + System.getProperty("javafx.version", "unknown")),
-                new Label("OS: " + System.getProperty("os.name") + " "
-                        + System.getProperty("os.version") + " (" + System.getProperty("os.arch") + ")"),
-                new Separator()
-        );
+        var appDesc = new Label("A cross-platform system tray application to track\nand manage GitHub Copilot CLI sessions and remote coding agents.");
+        appDesc.setWrapText(true);
+        appDesc.getStyleClass().add("about-description");
 
-        // CLI status section — populated asynchronously
-        var cliStatusHeader = createSectionHeader("Copilot CLI");
-        var cliConnectionLabel = new Label("Connection: checking…");
-        var cliVersionLabel = new Label("Version: checking…");
-        var cliProtocolLabel = new Label("Protocol: checking…");
-        var cliAuthLabel = new Label("Authenticated: checking…");
-        var cliAuthTypeLabel = new Label("Auth Type: —");
-        var cliLoginLabel = new Label("Login: —");
+        var versionBadge = new Label("v" + appVersion);
+        versionBadge.getStyleClass().add("about-version-badge");
 
-        content.getChildren().addAll(
-                cliStatusHeader,
-                cliConnectionLabel,
-                cliVersionLabel,
-                cliProtocolLabel,
-                cliAuthLabel,
-                cliAuthTypeLabel,
-                cliLoginLabel,
-                new Separator()
-        );
+        var headerRow = new HBox(10, appName, versionBadge);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Fetch CLI status
+        var heroBox = new VBox(6, headerRow, appDesc);
+        heroBox.getStyleClass().add("about-card");
+        heroBox.setPadding(new Insets(16));
+
+        // --- Build card ---
+        var buildGrid = aboutGrid();
+        aboutRow(buildGrid, 0, "Version", appVersion);
+        aboutRow(buildGrid, 1, "Build", buildTime);
+        aboutRow(buildGrid, 2, "Commit", gitCommit);
+        aboutRow(buildGrid, 3, "License", "MIT");
+        var buildCard = aboutCard("Build Information", buildGrid);
+
+        // --- Runtime card ---
+        var runtimeGrid = aboutGrid();
+        aboutRow(runtimeGrid, 0, "JDK", System.getProperty("java.version")
+                + "  (" + System.getProperty("java.vendor", "") + ")");
+        aboutRow(runtimeGrid, 1, "JavaFX", System.getProperty("javafx.version", "unknown"));
+        aboutRow(runtimeGrid, 2, "OS", System.getProperty("os.name") + " "
+                + System.getProperty("os.version"));
+        aboutRow(runtimeGrid, 3, "Architecture", System.getProperty("os.arch"));
+        var runtimeCard = aboutCard("Runtime Environment", runtimeGrid);
+
+        // --- CLI status card ---
+        var cliGrid = aboutGrid();
+        var cliConnectionVal = aboutValueLabel("checking…");
+        var cliVersionVal = aboutValueLabel("checking…");
+        var cliProtocolVal = aboutValueLabel("checking…");
+        var cliAuthVal = aboutValueLabel("checking…");
+        var cliAuthTypeVal = aboutValueLabel("—");
+        var cliLoginVal = aboutValueLabel("—");
+
+        int r = 0;
+        aboutRow(cliGrid, r++, "Connection", cliConnectionVal);
+        aboutRow(cliGrid, r++, "Version", cliVersionVal);
+        aboutRow(cliGrid, r++, "Protocol", cliProtocolVal);
+        aboutRow(cliGrid, r++, "Authenticated", cliAuthVal);
+        aboutRow(cliGrid, r++, "Auth Type", cliAuthTypeVal);
+        aboutRow(cliGrid, r, "Login", cliLoginVal);
+        var cliCard = aboutCard("Copilot CLI Status", cliGrid);
+
         Runnable fetchStatus = () -> sdkBridge.fetchCliStatus().thenAccept(status -> Platform.runLater(() -> {
             var stateStr = switch (status.connectionState()) {
                 case CONNECTED -> "Connected ✅";
@@ -1252,35 +1258,71 @@ public class SettingsWindow {
                 case DISCONNECTED -> "Disconnected ❌";
                 case ERROR -> "Error ⚠️";
             };
-            cliConnectionLabel.setText("Connection: " + stateStr);
-            cliVersionLabel.setText("Version: " + (status.version() != null ? status.version() : "—"));
-            cliProtocolLabel.setText("Protocol: " + (status.protocolVersion() != null ? status.protocolVersion() : "—"));
-            cliAuthLabel.setText("Authenticated: " + (status.authenticated() != null
-                    ? (status.authenticated() ? "Yes ✅" : "No ❌") : "—"));
-            cliAuthTypeLabel.setText("Auth Type: " + (status.authType() != null ? status.authType() : "—"));
-            cliLoginLabel.setText("Login: " + (status.login() != null ? status.login() : "—"));
+            cliConnectionVal.setText(stateStr);
+            cliVersionVal.setText(status.version() != null ? status.version() : "—");
+            cliProtocolVal.setText(status.protocolVersion() != null ? status.protocolVersion() : "—");
+            cliAuthVal.setText(status.authenticated() != null
+                    ? (status.authenticated() ? "Yes ✅" : "No ❌") : "—");
+            cliAuthTypeVal.setText(status.authType() != null ? status.authType() : "—");
+            cliLoginVal.setText(status.login() != null ? status.login() : "—");
         })).exceptionally(ex -> {
-            Platform.runLater(() -> cliConnectionLabel.setText("Connection: Unable to reach CLI ❌"));
+            Platform.runLater(() -> cliConnectionVal.setText("Unable to reach CLI ❌"));
             return null;
         });
 
-        // Links
-        content.getChildren().addAll(
-                createSectionHeader("Links"),
-                createHyperlink("GitHub", "https://github.com/brunoborges/copilot-agentic-tray"),
+        // --- Links card ---
+        var linksBox = new VBox(6,
+                createHyperlink("GitHub Repository", "https://github.com/brunoborges/copilot-agentic-tray"),
                 createHyperlink("Copilot SDK for Java", "https://github.com/github/copilot-sdk-java"),
-                createHyperlink("Copilot CLI Docs", "https://docs.github.com/copilot/concepts/agents/about-copilot-cli")
-        );
+                createHyperlink("Copilot CLI Documentation", "https://docs.github.com/copilot/concepts/agents/about-copilot-cli"));
+        var linksCard = aboutCard("Links", linksBox);
+
+        // --- Layout ---
+        var content = new VBox(12, heroBox, buildCard, runtimeCard, cliCard, linksCard);
+        content.setPadding(new Insets(20));
 
         var scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
 
-        // Auto-fetch CLI status whenever the About page becomes visible
         scrollPane.visibleProperty().addListener((obs, wasVisible, isNowVisible) -> {
             if (isNowVisible) fetchStatus.run();
         });
 
         return scrollPane;
+    }
+
+    private VBox aboutCard(String title, Node body) {
+        var header = new Label(title);
+        header.getStyleClass().add("about-card-title");
+        var card = new VBox(8, header, body);
+        card.getStyleClass().add("about-card");
+        card.setPadding(new Insets(14));
+        return card;
+    }
+
+    private GridPane aboutGrid() {
+        var grid = new GridPane();
+        grid.setHgap(16);
+        grid.setVgap(6);
+        return grid;
+    }
+
+    private void aboutRow(GridPane grid, int row, String key, String value) {
+        aboutRow(grid, row, key, aboutValueLabel(value));
+    }
+
+    private void aboutRow(GridPane grid, int row, String key, Label valueLabel) {
+        var keyLabel = new Label(key);
+        keyLabel.getStyleClass().add("about-key");
+        keyLabel.setMinWidth(110);
+        grid.add(keyLabel, 0, row);
+        grid.add(valueLabel, 1, row);
+    }
+
+    private Label aboutValueLabel(String text) {
+        var label = new Label(text);
+        label.getStyleClass().add("about-value");
+        return label;
     }
 
     private Label createSectionHeader(String text) {

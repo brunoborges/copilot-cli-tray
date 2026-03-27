@@ -688,6 +688,48 @@
     -fx-padding: 4 0;
 }
 
+.about-app-name {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e0e0e0;
+}
+
+.about-version-badge {
+    -fx-background-color: #3a5a8c;
+    -fx-text-fill: #d0e8ff;
+    -fx-background-radius: 10;
+    -fx-padding: 2 10;
+    -fx-font-size: 11px;
+}
+
+.about-description {
+    -fx-text-fill: #a0a0b8;
+    -fx-font-size: 12px;
+}
+
+.about-card {
+    -fx-background-color: #252538;
+    -fx-background-radius: 8;
+    -fx-border-color: #3c3c52;
+    -fx-border-radius: 8;
+}
+
+.about-card-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b0b0c8;
+}
+
+.about-key {
+    -fx-text-fill: #8888a0;
+    -fx-font-size: 12px;
+}
+
+.about-value {
+    -fx-text-fill: #d0d0e0;
+    -fx-font-size: 12px;
+}
+
 /* --- Grid pane (preferences, etc) --- */
 
 .grid-pane {
