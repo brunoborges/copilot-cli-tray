@@ -171,7 +171,7 @@ public class PrunePanel extends VBox {
     private VBox buildCard(String directory, List<PruneCandidate> sessions) {
         var card = new VBox();
         card.getStyleClass().add("about-card");
-        card.setPadding(new Insets(12));
+        card.setPadding(new Insets(12, 6, 6, 12));
         card.setSpacing(8);
 
         // Card header: title with count/size on left, Select all/none on right
@@ -206,7 +206,8 @@ public class PrunePanel extends VBox {
     private TableView<PruneCandidate> buildCardTable(List<PruneCandidate> sessions) {
         var table = new TableView<PruneCandidate>();
         table.getStyleClass().addAll("prune-card-table", "no-header");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_NEXT_COLUMN);
+        table.setMaxWidth(Double.MAX_VALUE);
 
         // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
@@ -225,6 +226,7 @@ public class PrunePanel extends VBox {
             return new SimpleStringProperty(msg != null ? msg : "");
         });
         nameCol.setPrefWidth(200);
+        nameCol.setMinWidth(100);
         nameCol.setSortable(false);
 
         // Category
