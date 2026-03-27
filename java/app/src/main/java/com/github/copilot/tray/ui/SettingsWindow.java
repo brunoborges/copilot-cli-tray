@@ -929,17 +929,6 @@ public class SettingsWindow {
             cards.add(aboutCard("Pull Request", prGrid));
         }
 
-        // --- Usage card (local only) ---
-        if (!session.remote()) {
-            var usageGrid = aboutGrid();
-            int u = 0;
-            aboutRow(usageGrid, u++, "Tokens", session.usage().currentTokens()
-                    + " / " + session.usage().tokenLimit()
-                    + "  (" + (int) session.usage().tokenUsagePercent() + "%)");
-            aboutRow(usageGrid, u, "Messages", String.valueOf(session.usage().messagesCount()));
-            cards.add(aboutCard("Usage", usageGrid));
-        }
-
         // --- Subagents card (local only) ---
         if (!session.remote() && !session.subagents().isEmpty()) {
             var subGrid = aboutGrid();
