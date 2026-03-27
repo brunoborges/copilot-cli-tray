@@ -486,35 +486,64 @@ public class PrunePanel extends VBox {
     // --- Info dialog ---
 
     private void showCategoryInfo() {
-        var alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Prune Categories");
-        alert.setHeaderText("How sessions are classified for pruning");
-        alert.setContentText("""
-                EMPTY (red)
-                Sessions with no events.jsonl file, or no user messages at all. \
-                These were likely created by accident or immediately abandoned.
+        var stage = new javafx.stage.Stage();
+        stage.setTitle("Prune Categories");
 
-                ABANDONED (orange)
-                Sessions where the user sent a message but no assistant response \
-                was ever generated. The session was started but never completed \
-                its first exchange.
+        var cards = new VBox(12);
+        cards.setPadding(new Insets(20));
 
-                TRIVIAL (gray)
-                Sessions with ≤5 user messages and some assistant responses. \
-                These are very short exchanges that typically hold little value \
-                for future reference. This category is optional and can be \
-                excluded using the checkbox.
+        cards.getChildren().addAll(
+                categoryCard("EMPTY", "#f14c4c",
+                        "Sessions with no events.jsonl file, or no user messages at all. "
+                                + "These were likely created by accident or immediately abandoned."),
+                categoryCard("ABANDONED", "#e8a855",
+                        "Sessions where the user sent a message but no assistant response "
+                                + "was ever generated. The session was started but never completed "
+                                + "its first exchange."),
+                categoryCard("TRIVIAL", "#7a7a94",
+                        "Sessions with ≤5 user messages and some assistant responses. "
+                                + "These are very short exchanges that typically hold little value "
+                                + "for future reference. This category is optional."),
+                categoryCard("CORRUPTED", "#c77dba",
+                        "Sessions with unreadable, malformed, or incompatible data. "
+                                + "These cannot be resumed and are safe to delete.")
+        );
 
-                CORRUPTED (purple)
-                Sessions with unreadable, malformed, or incompatible data. \
-                These cannot be resumed and are safe to delete. This includes \
-                sessions with invalid JSON in events.jsonl or corrupted \
-                workspace.yaml files.
+        var note = new Label("Sessions with more than 5 user messages and at least one "
+                + "assistant response are considered valuable and never flagged.");
+        note.setWrapText(true);
+        note.getStyleClass().add("about-value");
+        note.setStyle("-fx-font-style: italic; -fx-padding: 4 0 0 0;");
+        cards.getChildren().add(note);
 
-                Sessions with more than 5 user messages and at least one \
-                assistant response are considered valuable and never flagged.""");
-        alert.getDialogPane().setPrefWidth(500);
-        alert.showAndWait();
+        var scene = new javafx.scene.Scene(new ScrollPane(cards) {{
+            setFitToWidth(true);
+        }}, 480, 420);
+        if (themeManager != null) themeManager.register(scene);
+        scene.getAccelerators().put(
+                new javafx.scene.input.KeyCodeCombination(
+                        javafx.scene.input.KeyCode.W,
+                        javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
+                stage::close);
+        stage.setScene(scene);
+        stage.show();
+        stage.toFront();
+    }
+
+    private VBox categoryCard(String name, String color, String description) {
+        var title = new Label(name);
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: " + color + ";");
+
+        var desc = new Label(description);
+        desc.setWrapText(true);
+        desc.getStyleClass().add("about-value");
+
+        var card = new VBox(4, title, desc);
+        card.getStyleClass().add("about-card");
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-border-color: " + color + " transparent transparent transparent; "
+                + "-fx-border-width: 3 0 0 0;");
+        return card;
     }
 
     // --- Utilities ---
