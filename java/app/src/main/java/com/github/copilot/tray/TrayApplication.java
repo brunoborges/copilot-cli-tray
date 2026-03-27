@@ -69,8 +69,8 @@ public class TrayApplication {
                         dir = session.workingDirectory();
                     } else {
                         // Fallback for prune-only sessions not in SessionManager
-                        var stats = SessionDiskReader.readStats(sessionId);
-                        dir = stats.workingDirectory();
+                        var info = SessionDiskReader.readDiskInfo(sessionId);
+                        dir = info.workingDirectory();
                     }
                     terminalLauncher.resumeSession(sessionId, dir);
                 },

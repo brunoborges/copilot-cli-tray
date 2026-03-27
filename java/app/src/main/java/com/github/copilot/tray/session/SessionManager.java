@@ -121,21 +121,22 @@ public class SessionManager {
                                      String workingDirectory, Instant lastModified,
                                      boolean remote) {
         if (!sessions.containsKey(id)) {
-            // Read disk stats for message counts and token estimates
-            var diskStats = SessionDiskReader.readStats(id);
+            // Read disk info for message counts, token estimates, and disk size
+            var info = SessionDiskReader.readDiskInfo(id);
             var resolvedDir = workingDirectory != null ? workingDirectory
-                    : diskStats.workingDirectory();
+                    : info.workingDirectory();
             var resolvedName = (name != null && !name.equals(id)) ? name
-                    : (!diskStats.firstUserMessage().isEmpty() ? diskStats.firstUserMessage() : id);
+                    : (!info.firstUserMessage().isEmpty() ? info.firstUserMessage() : id);
             // Prefer model from disk events (session.model_change, session.resume, session.shutdown)
-            var resolvedModel = (diskStats.model() != null && !diskStats.model().isEmpty())
-                    ? diskStats.model()
+            var resolvedModel = (info.model() != null && !info.model().isEmpty())
+                    ? info.model()
                     : (model != null ? model : "unknown");
 
             var snapshot = SessionSnapshot.initial(id, resolvedModel, resolvedDir)
                     .withName(resolvedName)
                     .withRemote(remote)
-                    .withUsage(diskStats.toUsageSnapshot());
+                    .withUsage(info.toUsageSnapshot())
+                    .withDiskSize(info.diskSizeBytes());
             if (lastModified != null) {
                 snapshot = snapshot.withLastActivity(lastModified);
                 if (lastModified.isBefore(Instant.now().minus(ACTIVE_THRESHOLD))) {

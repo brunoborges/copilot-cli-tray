@@ -8,8 +8,6 @@ import java.nio.file.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Identifies low-value Copilot CLI sessions that can be safely pruned.
@@ -19,6 +17,7 @@ import java.util.stream.Stream;
  *   <li><b>EMPTY</b> — No events.jsonl, or zero user messages</li>
  *   <li><b>ABANDONED</b> — Has user messages but no assistant response</li>
  *   <li><b>TRIVIAL</b> — Very short exchanges (≤5 user messages)</li>
+ *   <li><b>CORRUPTED</b> — Unreadable or incompatible session data</li>
  * </ul>
  */
 public class SessionPruner {
@@ -120,15 +119,18 @@ public class SessionPruner {
         try (var dirs = Files.list(sessionStoreDir)) {
             dirs.filter(Files::isDirectory).forEach(sessionDir -> {
                 try {
-                    var candidate = analyzeSession(sessionDir, includeTrivial);
+                    var info = SessionDiskReader.readDiskInfo(sessionDir);
+                    var candidate = classify(info, includeTrivial);
                     candidate.ifPresent(candidates::add);
                 } catch (Exception e) {
                     // Sessions that throw during analysis are corrupted
                     LOG.debug("Corrupted session dir {}: {}", sessionDir, e.getMessage());
                     var sessionId = sessionDir.getFileName().toString();
                     candidates.add(new PruneCandidate(
-                            sessionId, PruneCategory.CORRUPTED, directorySize(sessionDir),
-                            Instant.EPOCH, Instant.EPOCH, "(analysis failed: " + e.getMessage() + ")",
+                            sessionId, PruneCategory.CORRUPTED,
+                            SessionDiskReader.directorySize(sessionDir),
+                            Instant.EPOCH, Instant.EPOCH,
+                            "(analysis failed: " + e.getMessage() + ")",
                             "", 0, 0));
                 }
             });
@@ -174,170 +176,54 @@ public class SessionPruner {
         return new PruneResult(deleted.size(), totalFreed, List.copyOf(deleted), List.copyOf(failed));
     }
 
-    // --- Analysis ---
+    // --- Classification from SessionDiskInfo ---
 
-    private Optional<PruneCandidate> analyzeSession(Path sessionDir, boolean includeTrivial) {
-        String sessionId = sessionDir.getFileName().toString();
-        Path eventsFile = sessionDir.resolve("events.jsonl");
-        Path workspaceFile = sessionDir.resolve("workspace.yaml");
-
-        // Parse workspace metadata
-        Instant createdAt = Instant.EPOCH;
-        Instant updatedAt = Instant.EPOCH;
-        String workingDirectory = "";
-        if (Files.exists(workspaceFile)) {
-            try {
-                var meta = parseWorkspaceYaml(workspaceFile);
-                createdAt = meta.getOrDefault("created_at", "").isEmpty()
-                        ? Instant.EPOCH : parseInstant(meta.get("created_at"));
-                updatedAt = meta.getOrDefault("updated_at", "").isEmpty()
-                        ? createdAt : parseInstant(meta.get("updated_at"));
-                workingDirectory = meta.getOrDefault("cwd", "");
-            } catch (Exception e) {
-                LOG.debug("Corrupted workspace.yaml in {}: {}", sessionId, e.getMessage());
-                long diskSize = directorySize(sessionDir);
-                return Optional.of(new PruneCandidate(
-                        sessionId, PruneCategory.CORRUPTED, diskSize,
-                        createdAt, updatedAt, "(corrupted workspace.yaml)", workingDirectory, 0, 0));
-            }
+    /**
+     * Classify a SessionDiskInfo into an optional PruneCandidate.
+     * Returns empty if the session is not prunable.
+     */
+    static Optional<PruneCandidate> classify(SessionDiskReader.SessionDiskInfo info,
+                                              boolean includeTrivial) {
+        if (info.corrupted()) {
+            String msg = info.corruptionReason() != null
+                    ? "(" + info.corruptionReason() + ")" : "(corrupted)";
+            return Optional.of(new PruneCandidate(
+                    info.sessionId(), PruneCategory.CORRUPTED, info.diskSizeBytes(),
+                    info.createdAt(), info.updatedAt(), msg,
+                    info.workingDirectory(), info.userMessages(), info.assistantMessages()));
         }
 
-        long diskSize = directorySize(sessionDir);
-
-        // Category: EMPTY — no events.jsonl at all
-        if (!Files.exists(eventsFile)) {
+        if (!info.hasEvents()) {
             return Optional.of(new PruneCandidate(
-                    sessionId, PruneCategory.EMPTY, diskSize,
-                    createdAt, updatedAt, "(no events)", workingDirectory, 0, 0));
+                    info.sessionId(), PruneCategory.EMPTY, info.diskSizeBytes(),
+                    info.createdAt(), info.updatedAt(), "(no events)",
+                    info.workingDirectory(), 0, 0));
         }
 
-        // Count event types
-        int userMessages = 0;
-        int assistantMessages = 0;
-        String firstUserMessage = "";
-        boolean corrupted = false;
-
-        try (var lines = Files.lines(eventsFile)) {
-            for (var line : (Iterable<String>) lines::iterator) {
-                var trimmed = line.trim();
-                // Detect corrupted lines: non-empty lines that aren't valid JSON objects
-                if (!trimmed.isEmpty() && !trimmed.startsWith("{")) {
-                    corrupted = true;
-                    break;
-                }
-                if (trimmed.contains("\"user.message\"")) {
-                    userMessages++;
-                    if (userMessages == 1) {
-                        firstUserMessage = extractUserMessage(trimmed);
-                    }
-                } else if (trimmed.contains("\"assistant.message\"")) {
-                    assistantMessages++;
-                }
-            }
-        } catch (Exception e) {
-            LOG.debug("Corrupted events.jsonl in {}: {}", sessionId, e.getMessage());
+        if (info.userMessages() == 0) {
             return Optional.of(new PruneCandidate(
-                    sessionId, PruneCategory.CORRUPTED, diskSize,
-                    createdAt, updatedAt, "(unreadable events.jsonl)", workingDirectory, 0, 0));
+                    info.sessionId(), PruneCategory.EMPTY, info.diskSizeBytes(),
+                    info.createdAt(), info.updatedAt(), "(no user messages)",
+                    info.workingDirectory(), info.userMessages(), info.assistantMessages()));
         }
 
-        if (corrupted) {
+        if (info.assistantMessages() == 0) {
             return Optional.of(new PruneCandidate(
-                    sessionId, PruneCategory.CORRUPTED, diskSize,
-                    createdAt, updatedAt, "(malformed events.jsonl)", workingDirectory,
-                    userMessages, assistantMessages));
+                    info.sessionId(), PruneCategory.ABANDONED, info.diskSizeBytes(),
+                    info.createdAt(), info.updatedAt(),
+                    truncate(info.firstUserMessage(), 80),
+                    info.workingDirectory(), info.userMessages(), info.assistantMessages()));
         }
 
-        // Category: EMPTY — events file exists but zero user messages
-        if (userMessages == 0) {
+        if (includeTrivial && info.userMessages() <= TRIVIAL_MESSAGE_THRESHOLD) {
             return Optional.of(new PruneCandidate(
-                    sessionId, PruneCategory.EMPTY, diskSize,
-                    createdAt, updatedAt, "(no user messages)", workingDirectory,
-                    userMessages, assistantMessages));
-        }
-
-        // Category: ABANDONED — user messages but zero assistant responses
-        if (assistantMessages == 0) {
-            return Optional.of(new PruneCandidate(
-                    sessionId, PruneCategory.ABANDONED, diskSize,
-                    createdAt, updatedAt, truncate(firstUserMessage, 80), workingDirectory,
-                    userMessages, assistantMessages));
-        }
-
-        // Category: TRIVIAL — very short exchanges
-        if (includeTrivial && userMessages <= TRIVIAL_MESSAGE_THRESHOLD) {
-            return Optional.of(new PruneCandidate(
-                    sessionId, PruneCategory.TRIVIAL, diskSize,
-                    createdAt, updatedAt, truncate(firstUserMessage, 80), workingDirectory,
-                    userMessages, assistantMessages));
+                    info.sessionId(), PruneCategory.TRIVIAL, info.diskSizeBytes(),
+                    info.createdAt(), info.updatedAt(),
+                    truncate(info.firstUserMessage(), 80),
+                    info.workingDirectory(), info.userMessages(), info.assistantMessages()));
         }
 
         return Optional.empty(); // Not prunable
-    }
-
-    /** Extract the user message content from a JSON event line. */
-    private static String extractUserMessage(String jsonLine) {
-        // Simple extraction without a JSON parser for performance
-        // Look for "content":"..." in the data object
-        int idx = jsonLine.indexOf("\"content\":");
-        if (idx < 0) return "(unknown)";
-        idx = jsonLine.indexOf('"', idx + 10);
-        if (idx < 0) return "(unknown)";
-        int end = jsonLine.indexOf('"', idx + 1);
-        // Handle escaped quotes
-        while (end > 0 && jsonLine.charAt(end - 1) == '\\') {
-            end = jsonLine.indexOf('"', end + 1);
-        }
-        if (end < 0) return "(unknown)";
-        return jsonLine.substring(idx + 1, end)
-                .replace("\\n", " ")
-                .replace("\\t", " ")
-                .trim();
-    }
-
-    /** Simple YAML parser for workspace.yaml (key: value on each line). */
-    private static Map<String, String> parseWorkspaceYaml(Path yamlFile) {
-        Map<String, String> map = new HashMap<>();
-        try (var lines = Files.lines(yamlFile)) {
-            lines.forEach(line -> {
-                int colon = line.indexOf(':');
-                if (colon > 0 && !line.startsWith(" ") && !line.startsWith("-")) {
-                    String key = line.substring(0, colon).trim();
-                    String value = line.substring(colon + 1).trim();
-                    map.put(key, value);
-                }
-            });
-        } catch (IOException e) {
-            // ignore
-        }
-        return map;
-    }
-
-    private static Instant parseInstant(String iso8601) {
-        try {
-            return Instant.parse(iso8601);
-        } catch (Exception e) {
-            return Instant.EPOCH;
-        }
-    }
-
-    /** Get the disk size of a session by its ID. */
-    public static long sessionDiskSize(String sessionId) {
-        var dir = defaultSessionStoreDir().resolve(sessionId);
-        return Files.isDirectory(dir) ? directorySize(dir) : 0;
-    }
-
-    /** Calculate the total size of a directory tree in bytes. */
-    public static long directorySize(Path dir) {
-        try (var walk = Files.walk(dir)) {
-            return walk.filter(Files::isRegularFile)
-                    .mapToLong(f -> {
-                        try { return Files.size(f); } catch (IOException e) { return 0; }
-                    })
-                    .sum();
-        } catch (IOException e) {
-            return 0;
-        }
     }
 
     private static void deleteDirectoryRecursively(Path dir) throws IOException {

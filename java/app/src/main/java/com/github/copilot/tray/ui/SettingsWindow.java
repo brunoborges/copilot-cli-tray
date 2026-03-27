@@ -389,7 +389,7 @@ public class SettingsWindow {
             var selected = List.copyOf(sessionTable.getSelectionModel().getSelectedItems());
             if (selected.isEmpty()) return;
             long totalSize = selected.stream()
-                    .mapToLong(s -> com.github.copilot.tray.session.SessionPruner.sessionDiskSize(s.id()))
+                    .mapToLong(SessionSnapshot::diskSizeBytes)
                     .sum();
             var sizeStr = formatDiskSize(totalSize);
             var msg = selected.size() == 1

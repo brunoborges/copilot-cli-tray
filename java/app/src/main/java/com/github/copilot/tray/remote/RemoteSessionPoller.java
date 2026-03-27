@@ -143,7 +143,8 @@ public class RemoteSessionPoller {
                 task.pullRequestTitle(),
                 task.pullRequestUrl(),
                 task.user(),
-                task.state()
+                task.state(),
+                0
         );
     }
 
