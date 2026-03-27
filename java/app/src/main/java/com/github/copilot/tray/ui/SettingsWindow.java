@@ -846,6 +846,7 @@ public class SettingsWindow {
         viewEventsBtn.setDisable(none || multi);
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
+        deleteBtn.setText(none || selectionCount == 1 ? "Delete" : "Delete (" + selectionCount + ")");
         // Remote actions
         openRepoBtn.setVisible(remote);
         openRepoBtn.setManaged(remote);
