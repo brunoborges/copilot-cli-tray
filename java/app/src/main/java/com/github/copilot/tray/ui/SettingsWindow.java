@@ -74,7 +74,6 @@ public class SettingsWindow {
     private VBox topPane;
     private VBox tableCard;
     private HBox bottomPane;
-    private ScrollPane detailScroll;
     private VBox rightBox;
 
     // Settings tab controls
@@ -332,21 +331,15 @@ public class SettingsWindow {
         usageTilesPane.setMinWidth(480);
         usageTilesPane.setMaxWidth(480);
 
-        detailScroll = new ScrollPane(detailPane);
-        detailScroll.setFitToWidth(true);
-
         // Detail (left, grows) + Usage tiles (right, fixed width) side by side — local mode
-        var detailCard = new VBox(detailScroll);
-        detailCard.getStyleClass().add("sessions-card");
-        VBox.setVgrow(detailScroll, Priority.ALWAYS);
-        HBox.setHgrow(detailCard, Priority.ALWAYS);
+        HBox.setHgrow(detailPane, Priority.ALWAYS);
 
         var tilesCard = new VBox(usageTilesPane);
         tilesCard.getStyleClass().add("sessions-card");
         tilesCard.setMinWidth(480);
         tilesCard.setMaxWidth(480);
 
-        bottomPane = new HBox(8, detailCard, tilesCard);
+        bottomPane = new HBox(8, detailPane, tilesCard);
 
         newSessionBtn = new Button("New Session");
         newSessionBtn.setOnAction(e -> {
@@ -748,18 +741,18 @@ public class SettingsWindow {
             // Remote: no aggregate row, detail pane full-width
             topPane.getChildren().setAll(tableCard);
 
-            detailScroll.setPrefHeight(375);
-            detailScroll.setMinHeight(375);
-            detailScroll.setMaxHeight(375);
+            detailPane.setPrefHeight(375);
+            detailPane.setMinHeight(375);
+            detailPane.setMaxHeight(375);
 
-            rightBox.getChildren().addAll(topPane, detailScroll, actionPane);
+            rightBox.getChildren().addAll(topPane, detailPane, actionPane);
         } else {
             // Local: aggregate row + table on top, detail+tiles split on bottom
             topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), tableCard);
 
-            detailScroll.setPrefHeight(Region.USE_COMPUTED_SIZE);
-            detailScroll.setMinHeight(Region.USE_COMPUTED_SIZE);
-            detailScroll.setMaxHeight(Double.MAX_VALUE);
+            detailPane.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            detailPane.setMinHeight(Region.USE_COMPUTED_SIZE);
+            detailPane.setMaxHeight(Double.MAX_VALUE);
 
             bottomPane.setPrefHeight(375);
             bottomPane.setMinHeight(375);
