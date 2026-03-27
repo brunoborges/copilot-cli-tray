@@ -59,7 +59,7 @@ public class PrunePanel extends VBox {
     // Auto-scan guard
     private boolean hasScanned = false;
 
-    private static final int ROW_HEIGHT = 28;
+    private static final int ROW_HEIGHT = 32;
     private static final int HEADER_HEIGHT = 32;
 
     public PrunePanel() {
@@ -203,7 +203,7 @@ public class PrunePanel extends VBox {
     private TableView<PruneCandidate> buildCardTable(List<PruneCandidate> sessions) {
         var table = new TableView<PruneCandidate>();
         table.getStyleClass().addAll("prune-card-table", "no-header");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
@@ -213,21 +213,25 @@ public class PrunePanel extends VBox {
         selectCol.setMinWidth(40);
         selectCol.setMaxWidth(40);
         selectCol.setSortable(false);
+        selectCol.setResizable(false);
 
-        // Name (first user message)
+        // Name (first user message) — this column flexes to fill remaining space
         var nameCol = new TableColumn<PruneCandidate, String>("Name");
         nameCol.setCellValueFactory(cd -> {
             var msg = cd.getValue().firstUserMessage();
             return new SimpleStringProperty(msg != null ? msg : "");
         });
-        nameCol.setPrefWidth(220);
+        nameCol.setPrefWidth(200);
         nameCol.setSortable(false);
 
         // Category
         var categoryCol = new TableColumn<PruneCandidate, String>("Category");
         categoryCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().category().name()));
         categoryCol.setPrefWidth(90);
+        categoryCol.setMinWidth(80);
+        categoryCol.setMaxWidth(100);
         categoryCol.setSortable(false);
+        categoryCol.setResizable(false);
         categoryCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -251,27 +255,37 @@ public class PrunePanel extends VBox {
         var ageCol = new TableColumn<PruneCandidate, String>("Age");
         ageCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().age()));
         ageCol.setPrefWidth(65);
+        ageCol.setMinWidth(60);
+        ageCol.setMaxWidth(80);
         ageCol.setSortable(false);
+        ageCol.setResizable(false);
 
         // Size
         var sizeCol = new TableColumn<PruneCandidate, String>("Size");
         sizeCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().diskSizeFormatted()));
         sizeCol.setPrefWidth(65);
+        sizeCol.setMinWidth(60);
+        sizeCol.setMaxWidth(80);
         sizeCol.setSortable(false);
+        sizeCol.setResizable(false);
 
         // Combined user/assistant messages
         var msgsCol = new TableColumn<PruneCandidate, String>("Msgs");
         msgsCol.setCellValueFactory(cd -> new SimpleStringProperty(
                 cd.getValue().userMessageCount() + "/" + cd.getValue().assistantMessageCount()));
         msgsCol.setPrefWidth(50);
+        msgsCol.setMinWidth(45);
+        msgsCol.setMaxWidth(60);
         msgsCol.setSortable(false);
+        msgsCol.setResizable(false);
 
         // Actions column
         var actionsCol = new TableColumn<PruneCandidate, Void>("⋮");
-        actionsCol.setPrefWidth(50);
-        actionsCol.setMinWidth(50);
-        actionsCol.setMaxWidth(50);
+        actionsCol.setPrefWidth(40);
+        actionsCol.setMinWidth(40);
+        actionsCol.setMaxWidth(40);
         actionsCol.setSortable(false);
+        actionsCol.setResizable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
             private final MenuButton menuBtn = new MenuButton("\u22EE");
             private final MenuItem resumeItem = new MenuItem("Resume");
@@ -310,7 +324,7 @@ public class PrunePanel extends VBox {
 
         // Size table to fit all rows (no header, no internal scrollbar)
         int rowCount = sessions.size();
-        double computedHeight = (rowCount * ROW_HEIGHT) + 2;
+        double computedHeight = (rowCount * ROW_HEIGHT) + 4;
         table.setPrefHeight(computedHeight);
         table.setMaxHeight(Region.USE_PREF_SIZE);
         table.setMinHeight(Region.USE_PREF_SIZE);
