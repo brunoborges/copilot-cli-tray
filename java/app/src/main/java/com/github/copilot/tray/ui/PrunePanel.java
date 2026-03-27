@@ -220,34 +220,34 @@ public class PrunePanel extends VBox {
 
         // Actions column
         var actionsCol = new TableColumn<PruneCandidate, Void>("Actions");
-        actionsCol.setPrefWidth(140);
+        actionsCol.setPrefWidth(100);
         actionsCol.setSortable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
-            private final Button resumeBtn = new Button("Resume");
-            private final Button deleteBtn = new Button("Delete");
-            private final HBox box = new HBox(4, resumeBtn, deleteBtn);
+            private final MenuButton menuBtn = new MenuButton("Actions");
+            private final MenuItem resumeItem = new MenuItem("Resume");
+            private final MenuItem viewEventsItem = new MenuItem("View Events");
+            private final MenuItem deleteItem = new MenuItem("Delete");
             {
-                resumeBtn.getStyleClass().add("prune-small-btn");
-                resumeBtn.setOnAction(e -> {
+                menuBtn.getStyleClass().add("prune-small-btn");
+                menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
+                resumeItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
-                    if (item != null) {
-                        resumeHandler.accept(item.sessionId());
-                    }
+                    if (item != null) resumeHandler.accept(item.sessionId());
                 });
-                deleteBtn.getStyleClass().add("prune-small-delete-btn");
-                deleteBtn.setOnAction(e -> {
+                viewEventsItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
-                    if (item != null) {
-                        deleteSingleSession(item);
-                    }
+                    if (item != null) SessionEventsViewer.show(item.sessionId());
                 });
-                box.setAlignment(Pos.CENTER);
+                deleteItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) deleteSingleSession(item);
+                });
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : box);
+                setGraphic(empty ? null : menuBtn);
             }
         });
 
@@ -409,7 +409,7 @@ public class PrunePanel extends VBox {
 
         // Actions — typed as String (sessionId) so updateItem fires reliably on cell reuse
         var actionsCol = new TreeTableColumn<Object, String>("Actions");
-        actionsCol.setPrefWidth(140);
+        actionsCol.setPrefWidth(100);
         actionsCol.setSortable(false);
         actionsCol.setCellValueFactory(cd -> {
             if (cd.getValue().getValue() instanceof PruneCandidate pc) {
@@ -418,13 +418,13 @@ public class PrunePanel extends VBox {
             return new SimpleStringProperty(null);
         });
         actionsCol.setCellFactory(col -> new TreeTableCell<>() {
-            private final Button resumeBtn = new Button("Resume");
-            private final Button deleteBtn = new Button("Delete");
-            private final HBox box = new HBox(4, resumeBtn, deleteBtn);
+            private final MenuButton menuBtn = new MenuButton("Actions");
+            private final MenuItem resumeItem = new MenuItem("Resume");
+            private final MenuItem viewEventsItem = new MenuItem("View Events");
+            private final MenuItem deleteItem = new MenuItem("Delete");
             {
-                resumeBtn.getStyleClass().add("prune-small-btn");
-                deleteBtn.getStyleClass().add("prune-small-delete-btn");
-                box.setAlignment(Pos.CENTER);
+                menuBtn.getStyleClass().add("prune-small-btn");
+                menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
             }
 
             @Override
@@ -433,12 +433,13 @@ public class PrunePanel extends VBox {
                 if (empty || sessionId == null) {
                     setGraphic(null);
                 } else {
-                    resumeBtn.setOnAction(e -> resumeHandler.accept(sessionId));
-                    deleteBtn.setOnAction(e -> candidates.stream()
+                    resumeItem.setOnAction(e -> resumeHandler.accept(sessionId));
+                    viewEventsItem.setOnAction(e -> SessionEventsViewer.show(sessionId));
+                    deleteItem.setOnAction(e -> candidates.stream()
                             .filter(c -> c.sessionId().equals(sessionId))
                             .findFirst()
                             .ifPresent(pc -> deleteSingleSession(pc)));
-                    setGraphic(box);
+                    setGraphic(menuBtn);
                 }
             }
         });
@@ -542,8 +543,7 @@ public class PrunePanel extends VBox {
         long selected = getSelectedCandidates().size();
         pruneBtn.setDisable(selected == 0);
         if (selected > 0) {
-            long size = getSelectedCandidates().stream().mapToLong(PruneCandidate::diskSizeBytes).sum();
-            pruneBtn.setText("Delete " + selected + " Selected (" + formatSize(size) + ")");
+            pruneBtn.setText("Delete " + selected + " Selected");
         } else {
             pruneBtn.setText("Delete Selected");
         }
