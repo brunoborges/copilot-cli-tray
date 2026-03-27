@@ -78,6 +78,7 @@ public class SettingsWindow {
 
     // Settings tab controls
     private TextField cliPathField;
+    private TextField ghCliPathField;
     private Spinner<Integer> pollIntervalSpinner;
     private Spinner<Integer> warningThresholdSpinner;
     private CheckBox notificationsCheckBox;
@@ -1123,9 +1124,9 @@ public class SettingsWindow {
         appearanceGrid.add(themeCombo, 1, 0);
         var appearanceCard = aboutCard("Appearance", appearanceGrid);
 
-        // --- CLI card ---
+        // --- GitHub Tools card ---
         var cliGrid = aboutGrid();
-        var cliPathKey = new Label("Copilot CLI Path");
+        var cliPathKey = new Label("GitHub Copilot (path)");
         cliPathKey.getStyleClass().add("about-key");
         cliPathKey.setMinWidth(180);
         cliPathField = new TextField(config.getCliPath());
@@ -1133,7 +1134,17 @@ public class SettingsWindow {
         cliPathField.setPrefWidth(350);
         cliGrid.add(cliPathKey, 0, 0);
         cliGrid.add(cliPathField, 1, 0);
-        var cliCard = aboutCard("Copilot CLI", cliGrid);
+
+        var ghCliPathKey = new Label("GitHub CLI (path)");
+        ghCliPathKey.getStyleClass().add("about-key");
+        ghCliPathKey.setMinWidth(180);
+        ghCliPathField = new TextField(config.getGhCliPath());
+        ghCliPathField.setPromptText("Auto-detect (leave empty)");
+        ghCliPathField.setPrefWidth(350);
+        cliGrid.add(ghCliPathKey, 0, 1);
+        cliGrid.add(ghCliPathField, 1, 1);
+
+        var cliCard = aboutCard("GitHub Tools", cliGrid);
 
         // --- Polling card ---
         var pollingGrid = aboutGrid();
@@ -1197,6 +1208,7 @@ public class SettingsWindow {
         var selectedTheme = themeCombo.getValue().toLowerCase();
         config.setTheme(selectedTheme);
         config.setCliPath(cliPathField.getText().trim());
+        config.setGhCliPath(ghCliPathField.getText().trim());
         config.setPollIntervalSeconds(pollIntervalSpinner.getValue());
         config.setContextWarningThreshold(warningThresholdSpinner.getValue());
         config.setNotificationsEnabled(notificationsCheckBox.isSelected());
@@ -1204,6 +1216,10 @@ public class SettingsWindow {
         config.setOpenDashboardOnStartup(openDashboardOnStartupCheckBox.isSelected());
         configStore.save();
         themeManager.setTheme(selectedTheme);
+
+        // Apply gh CLI path to runner
+        var ghPath = config.getGhCliPath();
+        ghCliRunner.setGhPath(ghPath.isBlank() ? "gh" : ghPath);
     }
 
     private static String capitalize(String s) {

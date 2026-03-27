@@ -44,6 +44,11 @@ public class TrayApplication {
         this.terminalLauncher = new TerminalLauncher();
         this.notifier = new Notifier();
         this.ghCliRunner = new GhCliRunner();
+        // Apply configured gh CLI path
+        var ghPath = configStore.getConfig().getGhCliPath();
+        if (ghPath != null && !ghPath.isBlank()) {
+            ghCliRunner.setGhPath(ghPath);
+        }
         this.remotePoller = new RemoteSessionPoller(ghCliRunner, sessionManager);
         this.themeManager = new ThemeManager();
         this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge, ghCliRunner,

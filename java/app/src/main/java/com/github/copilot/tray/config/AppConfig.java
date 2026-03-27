@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class AppConfig {
 
     private String cliPath = "";
+    private String ghCliPath = "";
     private int pollIntervalSeconds = 5;
     private int contextWarningThreshold = 80;
     private boolean notificationsEnabled = true;
@@ -21,6 +22,9 @@ public class AppConfig {
 
     public String getCliPath() { return cliPath; }
     public void setCliPath(String cliPath) { this.cliPath = cliPath; }
+
+    public String getGhCliPath() { return ghCliPath; }
+    public void setGhCliPath(String ghCliPath) { this.ghCliPath = ghCliPath; }
 
     public int getPollIntervalSeconds() { return pollIntervalSeconds; }
     public void setPollIntervalSeconds(int pollIntervalSeconds) { this.pollIntervalSeconds = pollIntervalSeconds; }
