@@ -503,11 +503,20 @@ public class SettingsWindow {
         // Wrap session table in a rounded card
         var tableCard = new VBox(sessionTable);
         tableCard.getStyleClass().add("sessions-card");
+        tableCard.setPadding(new Insets(2));
+        // Clip content to rounded corners
+        var clip = new javafx.scene.shape.Rectangle();
+        clip.setArcWidth(16);
+        clip.setArcHeight(16);
+        clip.widthProperty().bind(tableCard.widthProperty());
+        clip.heightProperty().bind(tableCard.heightProperty());
+        tableCard.setClip(clip);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
         VBox.setVgrow(tableCard, Priority.ALWAYS);
 
         // Top: aggregate tiles + session table card (grows to fill)
-        topPane = new VBox(4, usageTilesPane.getAggregateRow(), tableCard);
+        topPane = new VBox(8, usageTilesPane.getAggregateRow(), tableCard);
+        topPane.setPadding(new Insets(0, 4, 0, 4));
         topPane.setMinHeight(200);
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
