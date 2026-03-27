@@ -328,8 +328,7 @@ public class PrunePanel extends VBox {
         var actionsCol = new TableColumn<PruneCandidate, Void>("⋮");
         actionsCol.setPrefWidth(40);
         actionsCol.setMinWidth(40);
-        actionsCol.setMinWidth(30);
-        actionsCol.setMaxWidth(30);
+        actionsCol.setMaxWidth(40);
         actionsCol.setSortable(false);
         actionsCol.setResizable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
@@ -341,8 +340,8 @@ public class PrunePanel extends VBox {
             {
                 menuBtn.getStyleClass().add("prune-small-btn");
                 menuBtn.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 2 0 2;");
-                menuBtn.setMaxWidth(26);
-                menuBtn.setPrefWidth(26);
+                menuBtn.setMaxWidth(34);
+                menuBtn.setPrefWidth(34);
                 menuBtn.getItems().addAll(resumeItem, viewEventsItem, copyIdItem,
                         new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {
