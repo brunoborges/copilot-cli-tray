@@ -30,6 +30,7 @@ public class PrunePanel extends VBox {
     private final SessionPruner pruner;
     private final Consumer<String> resumeHandler;
     private final ThemeManager themeManager;
+    private javafx.stage.Stage categoryStage;
     private final SessionManager sessionManager;
 
     private final CheckBox includeTrivialCb = new CheckBox("Include trivial sessions (≤5 messages)");
@@ -575,8 +576,14 @@ public class PrunePanel extends VBox {
     // --- Info dialog ---
 
     private void showCategoryInfo() {
+        if (categoryStage != null && categoryStage.isShowing()) {
+            categoryStage.toFront();
+            return;
+        }
         var stage = new javafx.stage.Stage();
         stage.setTitle("Prune Categories");
+        stage.setOnHidden(e -> categoryStage = null);
+        categoryStage = stage;
 
         var cards = new VBox(12);
         cards.setPadding(new Insets(20));
