@@ -206,7 +206,7 @@ public class PrunePanel extends VBox {
     private TableView<PruneCandidate> buildCardTable(List<PruneCandidate> sessions) {
         var table = new TableView<PruneCandidate>();
         table.getStyleClass().addAll("prune-card-table", "no-header");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_NEXT_COLUMN);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
@@ -226,7 +226,6 @@ public class PrunePanel extends VBox {
         });
         nameCol.setPrefWidth(200);
         nameCol.setMinWidth(100);
-        nameCol.setMaxWidth(Double.MAX_VALUE);
         nameCol.setSortable(false);
         nameCol.setCellFactory(col -> new TableCell<>() {
             @Override
