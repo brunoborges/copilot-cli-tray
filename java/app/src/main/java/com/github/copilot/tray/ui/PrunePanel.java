@@ -33,6 +33,7 @@ public class PrunePanel extends VBox {
     private final CheckBox includeTrivialCb = new CheckBox("Include trivial sessions (≤5 messages)");
     private final Label statusLabel = new Label("Scanning will start automatically…");
     private final Label summaryLabel = new Label("");
+    private final Button refreshBtn = new Button("Refresh");
     private final Button pruneBtn = new Button("Delete Selected");
     private final ProgressIndicator spinner = new ProgressIndicator();
 
@@ -76,13 +77,15 @@ public class PrunePanel extends VBox {
 
         // Scan controls
         includeTrivialCb.setSelected(true);
+        refreshBtn.setOnAction(e -> runScan());
+        refreshBtn.getStyleClass().add("prune-scan-btn");
 
         spinner.setVisible(false);
         spinner.setPrefSize(20, 20);
 
         infoBtn.setOnAction(e -> showCategoryInfo());
 
-        var topRow = new HBox(10, includeTrivialCb, infoBtn, spinner);
+        var topRow = new HBox(10, refreshBtn, includeTrivialCb, infoBtn, spinner);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         summaryLabel.getStyleClass().add("prune-summary");
@@ -382,6 +385,7 @@ public class PrunePanel extends VBox {
     // --- Scan ---
 
     private void runScan() {
+        refreshBtn.setDisable(true);
         spinner.setVisible(true);
         statusLabel.setText("Scanning sessions…");
         summaryLabel.setText("");
@@ -395,6 +399,7 @@ public class PrunePanel extends VBox {
                 .thenAccept(results -> Platform.runLater(() -> {
                     candidates = results;
                     rebuildCards();
+                    refreshBtn.setDisable(false);
                     spinner.setVisible(false);
 
                     if (candidates.isEmpty()) {
