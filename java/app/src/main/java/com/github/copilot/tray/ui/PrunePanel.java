@@ -326,13 +326,15 @@ public class PrunePanel extends VBox {
             private final MenuButton menuBtn = new MenuButton("\u22EE");
             private final MenuItem resumeItem = new MenuItem("Resume");
             private final MenuItem viewEventsItem = new MenuItem("View Events");
+            private final MenuItem copyIdItem = new MenuItem("Copy ID");
             private final MenuItem deleteItem = new MenuItem("Delete");
             {
                 menuBtn.getStyleClass().add("prune-small-btn");
                 menuBtn.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 2 0 2;");
                 menuBtn.setMaxWidth(26);
                 menuBtn.setPrefWidth(26);
-                menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
+                menuBtn.getItems().addAll(resumeItem, viewEventsItem, copyIdItem,
+                        new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
                     if (item != null) resumeHandler.accept(item.sessionId());
@@ -342,6 +344,15 @@ public class PrunePanel extends VBox {
                     if (item != null) {
                         new SessionEventsViewer(item.sessionId(), item.firstUserMessage(),
                                 themeManager, null).show();
+                    }
+                });
+                copyIdItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        var cb = javafx.scene.input.Clipboard.getSystemClipboard();
+                        var content = new javafx.scene.input.ClipboardContent();
+                        content.putString(item.sessionId());
+                        cb.setContent(content);
                     }
                 });
                 deleteItem.setOnAction(e -> {
