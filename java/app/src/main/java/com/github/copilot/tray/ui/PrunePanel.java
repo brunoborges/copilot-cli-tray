@@ -327,10 +327,10 @@ public class PrunePanel extends VBox {
         table.getColumns().addAll(selectCol, nameCol, categoryCol, ageCol, sizeCol, msgsCol, actionsCol);
         table.setItems(FXCollections.observableArrayList(sessions));
 
-        // Size table: minimum 4 rows, scroll if more
-        int rowCount = sessions.size();
-        int displayRows = Math.max(4, rowCount);
-        double computedHeight = (displayRows * ROW_HEIGHT) + 4;
+        // Size table: show 4 rows; scroll internally if more
+        int maxVisible = 4;
+        int displayRows = Math.min(sessions.size(), maxVisible);
+        double computedHeight = (Math.max(displayRows, maxVisible) * ROW_HEIGHT) + 4;
         table.setPrefHeight(computedHeight);
         table.setMaxHeight(Region.USE_PREF_SIZE);
         table.setMinHeight(Region.USE_PREF_SIZE);
